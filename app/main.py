@@ -11,7 +11,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import create_all_tables
 from app.schemas import ErrorResponse, ValidationError
-from app.routes.tenants import router as tenant_router
 
 # Configure logging
 logging.basicConfig(
@@ -49,9 +48,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Include routers
-app.include_router(tenant_router)
 
 
 # ============================================================================
