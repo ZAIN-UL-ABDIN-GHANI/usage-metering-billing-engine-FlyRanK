@@ -1,0 +1,49 @@
+/* App wrapper styles */
+#root {
+  min-height: 100vh;
+  background-color: #f9fafb;
+}
+
+/* Fade in animation for page transitions */
+@keyframes pageTransition {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+main {
+  animation: pageTransition 0.3s ease-in-out;
+}
+
+/* Tailwind configuration for custom utilities */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition;
+  }
+
+  .btn-secondary {
+    @apply border border-gray-300 hover:bg-gray-50 text-gray-900 font-semibold py-2 px-4 rounded-lg transition;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow p-6;
+  }
+
+  .card-hover {
+    @apply bg-white rounded-lg shadow p-6 hover:shadow-lg transition;
+  }
+}
