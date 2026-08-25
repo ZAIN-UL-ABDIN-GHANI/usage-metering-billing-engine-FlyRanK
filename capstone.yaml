@@ -1,7 +1,7 @@
 version: '1.0'
 project: flyrank-billing-engine
 description: FlyRank SaaS Usage Metering & Billing Engine
-author: FlyRank Internship Backend Track
+author: FlyRank Internship Backend Track by Zain ul abdin ghani  
 
 # Application metadata
 metadata:
