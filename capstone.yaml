@@ -1,0 +1,305 @@
+version: '1.0'
+project: flyrank-billing-engine
+description: FlyRank SaaS Usage Metering & Billing Engine
+author: FlyRank Internship Backend Track
+
+# Application metadata
+metadata:
+  difficulty: Medium
+  language: Python + React
+  framework: FastAPI + React
+  database: PostgreSQL
+  payment_provider: Stripe (Test Mode)
+  estimated_hours: 30-45
+
+# How to run the application
+run:
+  command: docker-compose up -d
+  description: Start all services (backend, frontend, database, nginx)
+  depends_on:
+    - docker
+    - docker-compose
+  environment:
+    STRIPE_API_KEY: "sk_test_*"
+    STRIPE_WEBHOOK_SECRET: "whsec_*"
+    DATABASE_URL: "postgresql://flyrank_user:password@postgres:5432/flyrank_billing"
+  ports:
+    - name: API
+      port: 8000
+      url: http://localhost:8000
+    - name: Frontend
+      port: 3000
+      url: http://localhost:3000
+    - name: Nginx (Production)
+      port: 80
+      url: http://localhost
+
+# Seeding demo data
+seed:
+  command: docker-compose exec backend python -m app.scripts.seed_demo
+  description: |
+    Populate database with demo tenants, plans, and sample usage data.
+    Creates two tenants (Free and Pro plans) for testing.
+  output: |
+    ✅ Demo data seeded successfully
+    - Tenant 1: tenant1@example.com / password123
+    - Tenant 2: tenant2@example.com / password123
+
+# Running tests
+test:
+  command: docker-compose exec backend pytest tests/ -v --cov=app
+  description: Run complete test suite with coverage reporting
+  includes:
+    - Idempotency tests (duplicate prevention)
+    - Quota enforcement tests (boundary cases)
+    - Pricing calculation tests (token rules)
+    - Stripe webhook tests (signature verification)
+    - Integration tests (end-to-end flows)
+  coverage:
+    minimum: 80%
+    target: 90%
+
+# API endpoints for evaluation
+endpoints:
+  base_url: http://localhost:8000/api
+  auth:
+    - method: POST
+      path: /auth/login
+      description: Authenticate and receive JWT token
+      example:
+        request: '{"email": "tenant1@example.com", "password": "password123"}'
+        response: '{"access_token": "eyJ...", "token_type": "bearer", "tenant_id": "..."}'
+    
+    - method: POST
+      path: /auth/logout
+      description: Invalidate current session
+  
+  metering:
+    - method: POST
+      path: /generate
+      description: Billable endpoint - records usage with idempotency
+      example:
+        request: '{"prompt": "hello", "idempotency_key": "req_123"}'
+        response: '{"result": "hello", "tokens_used": 10, "cost": 0.00001}'
+      key_feature: Idempotent metering - same key never creates duplicate
+    
+    - method: GET
+      path: /usage
+      description: Get current usage and cost for billing period
+      example:
+        response: '{"api_calls_used": 500, "api_calls_limit": 1000, "ai_tokens_used": 50000, "ai_tokens_limit": 100000, "current_cost": 5000, "plan_name": "Free"}'
+  
+  billing:
+    - method: GET
+      path: /subscription
+      description: Get subscription details and status
+    
+    - method: GET
+      path: /plans
+      description: List available plans with pricing
+    
+    - method: POST
+      path: /checkout
+      description: Create Stripe Checkout session
+      example:
+        request: '{"plan_id": "pro"}'
+        response: '{"session_id": "cs_test_..."}'
+      key_feature: Integrates with Stripe test mode (no real cards charged)
+    
+    - method: POST
+      path: /webhooks/stripe
+      description: Stripe webhook receiver (verify signature + deduplicate)
+      headers:
+        - name: stripe-signature
+          description: Cryptographic signature from Stripe
+      key_feature: Verifies webhook authenticity and prevents duplicate processing
+  
+  system:
+    - method: GET
+      path: /health
+      description: Health check endpoint
+      response: '{"status": "healthy"}'
+
+# Definition of Done checklist
+definition_of_done:
+  metering:
+    - description: Billable action creates exactly one usage event under retries
+      test: tests/test_idempotency.py::test_no_duplicate_usage
+      evidence_in: EVIDENCE.md
+    
+    - description: Idempotency key deduplication works end-to-end
+      test: tests/test_idempotency.py::test_idempotency_key_prevents_doubles
+      evidence_in: EVIDENCE.md
+  
+  quotas:
+    - description: Usage checked against plan limits
+      test: tests/test_quota.py::test_quota_enforcement
+      evidence_in: EVIDENCE.md
+    
+    - description: Correct status codes (429/402) with clear error messages
+      test: tests/test_quota.py::test_quota_boundary_responses
+      evidence_in: EVIDENCE.md
+  
+  cost_calculation:
+    - description: Monthly rollup into cost per tenant
+      test: tests/test_pricing.py::test_cost_rollup
+      evidence_in: EVIDENCE.md
+    
+    - description: AI token pricing rules (cached input, reasoning, output)
+      test: tests/test_pricing.py::test_token_pricing_rules
+      evidence_in: EVIDENCE.md
+  
+  stripe_integration:
+    - description: Checkout in test mode works end-to-end
+      test: tests/test_stripe.py::test_checkout_flow
+      evidence_in: EVIDENCE.md
+    
+    - description: Webhooks verify signatures and ignore duplicates
+      test: tests/test_stripe.py::test_webhook_verification_and_deduplication
+      evidence_in: EVIDENCE.md
+    
+    - description: Subscription state synchronizes correctly
+      test: tests/test_stripe.py::test_subscription_sync
+      evidence_in: EVIDENCE.md
+  
+  data_model:
+    - description: Tenants, plans, subscriptions, usage events schema
+      location: backend/app/models/
+      evidence_in: EVIDENCE.md
+    
+    - description: Tenant isolation enforced at row level
+      test: tests/test_security.py::test_tenant_isolation
+      evidence_in: EVIDENCE.md
+  
+  testing:
+    - description: Core scary cases covered deterministically
+      test: tests/
+      coverage_minimum: 80%
+    
+    - description: All Definition of Done tests pass
+      command: pytest tests/ -v
+  
+  documentation:
+    - description: README with setup, run, seed, test instructions
+      location: README.md
+    
+    - description: Architecture diagram
+      location: README.md
+    
+    - description: EVIDENCE.md with real verification proofs
+      location: EVIDENCE.md
+
+# Demo flow (5 minutes)
+demo:
+  script: |
+    1. Show dashboard with usage metrics (Free plan, ~50% quota)
+    2. Make 5 billable API calls with same idempotency key
+       - Show in database: only 1 usage_event created (idempotency works)
+    3. Show quota boundary:
+       - Attempt request that exceeds limit
+       - Receive 429 with clear message: "Your plan limit of 1000 API calls exceeded"
+    4. Upgrade to Pro via Stripe test Checkout
+       - Complete checkout with test card 4242 4242 4242 4242
+       - Webhook fires: customer.subscription.updated
+       - Dashboard shows new Pro limits (100k API calls, 10M tokens)
+    5. Send forged webhook
+       - Show 400 response: "Invalid signature"
+       - Replay real webhook: processed once, not twice
+    6. Show cost calculation
+       - GET /usage returns: current_cost: 50000 cents ($500)
+       - Run pricing tests: all assertions pass
+  
+  closing: |
+    "Usage, money, and customer access stay correct under retries, failures, and real-world conditions."
+
+# Shared requirements (all capstones must show these)
+shared_requirements:
+  - id: 1
+    title: Layered architecture
+    location: backend/app/
+    example: data/ (models), services/ (logic), routes/ (HTTP)
+  
+  - id: 2
+    title: Validation at boundary
+    example: 'Invalid quota parameter → 422, never 500'
+  
+  - id: 3
+    title: Background job
+    location: backend/app/jobs/
+    example: 'Nightly reconciliation against Stripe'
+  
+  - id: 4
+    title: Real persistence with migrations
+    location: backend/alembic/
+    example: 'Alembic migrations with indexes'
+  
+  - id: 5
+    title: Idempotency where it matters
+    location: backend/app/services/metering.py
+    example: 'Idempotency key + unique constraint in database'
+  
+  - id: 6
+    title: Secrets clean
+    example: '.env in .gitignore, no API keys in code'
+  
+  - id: 7
+    title: Cost tracked (if AI used)
+    location: backend/app/models/usage.py
+    example: 'Every API call has cost_cents tracked'
+  
+  - id: 8
+    title: Tests that matter
+    location: tests/
+    example: 'Scary cases: duplicates, boundaries, retries'
+
+# File structure
+structure:
+  "":
+    - README.md
+    - capstone.yaml
+    - docker-compose.yml
+    - nginx.conf
+    - .gitignore
+    - .env.example
+    - LICENSE
+  
+  "backend/":
+    - app/
+    - tests/
+    - alembic/
+    - requirements.txt
+    - Dockerfile
+    - pyproject.toml
+  
+  "frontend/":
+    - src/
+    - public/
+    - package.json
+    - vite.config.ts
+    - Dockerfile
+  
+  "docs/":
+    - API.md
+    - DATABASE.md
+    - DEPLOYMENT.md
+    - TESTING.md
+  
+  "EVIDENCE.md": "Real verification proofs (not claims)"
+  "BUILDLOG.md": "Implementation journal"
+  "MODULE_13_SUMMARY.md": "Final module summary"
+
+# Required files at submission
+required_files:
+  - README.md
+  - capstone.yaml
+  - EVIDENCE.md
+  - BUILDLOG.md
+  - .env.example
+  - .gitignore
+  - LICENSE
+  - Dockerfile (backend & frontend)
+  - docker-compose.yml
+
+licenses:
+  - type: MIT
+    file: LICENSE
