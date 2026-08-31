@@ -1,22 +1,28 @@
 """Database initialization and session management."""
 
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
 from typing import Generator
+
+from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker, Session
+
+load_dotenv(override=True)
 
 from app.config import settings
 
-# Create engine
+
+# Use the DATABASE_URL directly from .env
+db_url = settings.database_url
+
+
 engine = create_engine(
-    settings.database_url,
-    poolclass=None,
+    db_url,
     pool_size=settings.database_pool_size,
     max_overflow=settings.database_max_overflow,
     echo=settings.debug,
 )
 
-# Create session factory
+
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
@@ -24,7 +30,7 @@ SessionLocal = sessionmaker(
     expire_on_commit=False,
 )
 
-# Base class for models
+
 Base = declarative_base()
 
 
@@ -43,5 +49,5 @@ def create_all_tables() -> None:
 
 
 def drop_all_tables() -> None:
-    """Drop all tables in the database."""
+    """Drop all tables from the database."""
     Base.metadata.drop_all(bind=engine)
