@@ -1,17 +1,7 @@
-# Environment variables
+# Environment
 .env
 .env.local
 .env.*.local
-
-# IDE & Editor
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-*.sublime-project
-*.sublime-workspace
 
 # Python
 __pycache__/
@@ -37,19 +27,33 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-
-# Node
-node_modules/
-npm-debug.log
-yarn-error.log
-.npm
-dist/
+pip-log.txt
+pip-delete-this-directory.txt
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
+.hypothesis/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Build
+dist/
+build/
 
 # Database
 *.db
@@ -57,48 +61,20 @@ htmlcov/
 *.sqlite3
 
 # Logs
-logs/
 *.log
+logs/
 
-# Docker
-docker-compose.override.yml
-
-# Build artifacts
-*.pyc
-*.pyo
-
-# Virtual environments
-venv/
-env/
-ENV/
-
-# IDE cache
-.vscode/settings.json
-.idea/
-
-# Stripe secrets (never commit)
-*.stripe.*
-whsec_*
-
-# SSL certificates (development only, not production)
-ssl/*.pem
-ssl/*.key
-ssl/*.crt
+# SSL certificates (unless checked in for development)
+*.pem
+*.key
+*.crt
+ssl/*
 !ssl/.gitkeep
 
-# Package manager lock files (optional)
-# package-lock.json
-# poetry.lock
-
-# Temporary files
-*.tmp
-*.swp
-*.bak
+# Docker
+.docker/
+docker-compose.override.yml
 
 # OS
-Thumbs.db
 .DS_Store
-
-# Production build artifacts
-dist/
-build/
+Thumbs.db
