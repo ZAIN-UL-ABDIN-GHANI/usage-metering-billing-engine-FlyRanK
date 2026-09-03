@@ -1,524 +1,582 @@
-# DATABASE.md - FlyRank Database Schema & Design
+# Database Schema Documentation
+
+Complete database schema for FlyRank Billing Engine.
 
 ---
 
-## Database Overview
+## Overview
 
-- **System**: PostgreSQL 16
-- **ORM**: SQLAlchemy 2.x
-- **Migrations**: Alembic
-- **Connection Pool**: 5-20 connections
+**Database**: PostgreSQL 16  
+**ORM**: SQLAlchemy 2.0  
+**Migrations**: Alembic  
+**Tables**: 16  
+**Indexes**: 40+  
+**Constraints**: Foreign keys, unique constraints, check constraints  
+
+---
+
+## Database Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                       CORE BILLING TABLES                        │
+├─────────────────────────────────────────────────────────────────┤
+│ ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐ │
+│ │     tenants      │  │   plans          │  │  subscriptions   │ │
+│ ├──────────────────┤  ├──────────────────┤  ├──────────────────┤ │
+│ │ id (PK)          │  │ id (PK)          │  │ id (PK)          │ │
+│ │ name             │  │ name             │  │ tenant_id (FK)   │ │
+│ │ email            │  │ description      │  │ plan_id (FK)     │ │
+│ │ created_at       │  │ api_calls_limit  │  │ status           │ │
+│ │ updated_at       │  │ ai_tokens_limit  │  │ stripe_sub_id    │ │
+│ │ is_active        │  │ price_cents      │  │ created_at       │ │
+│ └──────────────────┘  │ created_at       │  │ updated_at       │ │
+│        │              └──────────────────┘  └──────────────────┘ │
+│        │                      ▲                       ▲            │
+│        │                      │                       │            │
+│        └──────────────────────┴───────────────────────┘            │
+│                                                                    │
+├─────────────────────────────────────────────────────────────────┤
+│ ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐ │
+│ │   usage_events   │  │  webhook_events  │  │     users        │ │
+│ ├──────────────────┤  ├──────────────────┤  ├──────────────────┤ │
+│ │ id (PK)          │  │ id (PK)          │  │ id (PK)          │ │
+│ │ tenant_id (FK)   │  │ event_id (unique)│  │ tenant_id (FK)   │ │
+│ │ type             │  │ event_type       │  │ email            │ │
+│ │ quantity         │  │ data             │  │ hashed_password  │ │
+│ │ cost_cents       │  │ processed        │  │ is_active        │ │
+│ │ idempotency_key  │  │ created_at       │  │ created_at       │ │
+│ │ timestamp        │  └──────────────────┘  └──────────────────┘ │
+│ └──────────────────┘                                              │
+│        ▲                                           ▲               │
+│        └───────────────────────────────────────────┘               │
+│                                                                    │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Core Tables
 
-### tenants
-Primary tenant (customer organization).
+### 1. tenants
 
-```sql
-CREATE TABLE tenants (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    company_name VARCHAR(255),
-    status VARCHAR(50) DEFAULT 'active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    INDEX idx_tenants_email (email),
-    INDEX idx_tenants_status (status)
-);
-```
+Multi-tenant customer organizations.
 
-**Fields**:
-- `id`: Unique tenant identifier
-- `email`: Contact email (unique)
-- `company_name`: Organization name
-- `status`: active, suspended, canceled
-- `created_at`, `updated_at`: Timestamps
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique tenant identifier |
+| `name` | VARCHAR(255) | NOT NULL | Organization name |
+| `email` | VARCHAR(255) | NOT NULL, UNIQUE | Primary contact email |
+| `stripe_customer_id` | VARCHAR(255) | UNIQUE | Stripe customer ID |
+| `is_active` | BOOLEAN | DEFAULT true | Account active status |
+| `created_at` | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
+| `updated_at` | TIMESTAMP | DEFAULT NOW() | Last update timestamp |
 
----
+**Indexes**:
+- `tenants_email_idx` - UNIQUE on email
+- `tenants_stripe_customer_id_idx` - For Stripe lookups
+- `tenants_is_active_idx` - For filtering active tenants
 
-### subscription_plans
-Available plan tiers.
-
-```sql
-CREATE TABLE subscription_plans (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(50) UNIQUE NOT NULL,
-    price_cents INTEGER NOT NULL,
-    api_calls_limit INTEGER NOT NULL,
-    ai_tokens_limit INTEGER NOT NULL,
-    features JSONB,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    UNIQUE(name)
-);
-```
-
-**Seed Data**:
-```sql
-INSERT INTO subscription_plans (name, price_cents, api_calls_limit, ai_tokens_limit) VALUES
-('Free', 0, 1000, 100000),
-('Pro', 2999, 100000, 10000000);
-```
-
-**Fields**:
-- `price_cents`: Monthly price in cents (integer for precision)
-- `api_calls_limit`: Monthly API call allowance
-- `ai_tokens_limit`: Monthly token allowance
-- `features`: JSON array of feature strings
+**Notes**:
+- All data is isolated per tenant
+- Stripe customer ID links to Stripe account
+- Email is unique per tenant
 
 ---
 
-### subscriptions
-Tenant's current subscription.
+### 2. plans
 
+Billing plans (Free, Pro, etc.)
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | VARCHAR(50) | PRIMARY KEY | Plan identifier (free, pro) |
+| `name` | VARCHAR(255) | NOT NULL | Display name |
+| `description` | TEXT | | Plan description |
+| `api_calls_limit` | INTEGER | NOT NULL | Monthly API call quota |
+| `ai_tokens_limit` | INTEGER | NOT NULL | Monthly AI token quota |
+| `price_cents` | INTEGER | NOT NULL | Monthly price in cents |
+| `created_at` | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
+| `updated_at` | TIMESTAMP | DEFAULT NOW() | Last update timestamp |
+
+**Sample Data**:
 ```sql
-CREATE TABLE subscriptions (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL UNIQUE,
-    plan_id UUID NOT NULL,
-    status VARCHAR(50) DEFAULT 'active',
-    stripe_subscription_id VARCHAR(255),
-    stripe_customer_id VARCHAR(255),
-    current_period_start TIMESTAMP,
-    current_period_end TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-    FOREIGN KEY (plan_id) REFERENCES subscription_plans(id),
-    
-    UNIQUE(tenant_id),
-    INDEX idx_subscriptions_tenant_id (tenant_id),
-    INDEX idx_subscriptions_stripe_id (stripe_subscription_id),
-    INDEX idx_subscriptions_status (status)
-);
+INSERT INTO plans VALUES
+('free', 'Free', 'Basic plan', 1000, 100000, 0, NOW(), NOW()),
+('pro', 'Professional', 'Advanced plan', 100000, 10000000, 2999, NOW(), NOW());
 ```
 
-**Fields**:
-- `tenant_id`: Which tenant (UNIQUE = one subscription per tenant)
-- `plan_id`: Current plan
-- `status`: active, past_due, canceled
-- `stripe_subscription_id`: Stripe's ID for webhooks
-- `stripe_customer_id`: Stripe customer ID
-- `current_period_start/end`: Billing cycle dates
+**Notes**:
+- Plan IDs are fixed (free, pro, etc.)
+- Prices stored as cents (integers)
+- Quotas are monthly limits
 
 ---
 
-### usage_events
-Individual usage recordings (immutable after creation).
+### 3. subscriptions
 
-```sql
-CREATE TABLE usage_events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL,
-    event_type VARCHAR(50) NOT NULL,
-    quantity INTEGER NOT NULL,
-    cost_cents INTEGER NOT NULL DEFAULT 0,
-    idempotency_key VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-    
-    -- CRITICAL: Uniqueness constraint prevents double-counting
-    UNIQUE(tenant_id, idempotency_key),
-    
-    INDEX idx_usage_events_tenant_id (tenant_id),
-    INDEX idx_usage_events_created_at (created_at),
-    INDEX idx_usage_events_event_type (event_type),
-    INDEX idx_usage_events_tenant_created (tenant_id, created_at)
-);
-```
+Tenant → Plan associations (current subscription).
 
-**Fields**:
-- `tenant_id`: Which tenant
-- `event_type`: api_call, ai_tokens_input, ai_tokens_cached_input, ai_tokens_output, ai_tokens_reasoning
-- `quantity`: Number of calls/tokens
-- `cost_cents`: Cost in cents (never float)
-- `idempotency_key`: Prevents duplicates (UNIQUE constraint at DB level)
-- `created_at`: When recorded
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique subscription ID |
+| `tenant_id` | UUID | NOT NULL, FK → tenants | Tenant reference |
+| `plan_id` | VARCHAR(50) | NOT NULL, FK → plans | Plan reference |
+| `status` | VARCHAR(50) | NOT NULL, DEFAULT 'active' | active, past_due, canceled |
+| `stripe_subscription_id` | VARCHAR(255) | UNIQUE | Stripe subscription ID |
+| `stripe_customer_id` | VARCHAR(255) | | Stripe customer ID |
+| `billing_cycle_start` | TIMESTAMP | | Current cycle start |
+| `billing_cycle_end` | TIMESTAMP | | Current cycle end |
+| `created_at` | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
+| `updated_at` | TIMESTAMP | DEFAULT NOW() | Last update timestamp |
 
-**Event Types**:
-```sql
--- API Calls
-INSERT INTO usage_events (tenant_id, event_type, quantity, cost_cents, idempotency_key)
-VALUES (tenant_id, 'api_call', 1, 0.001 * 100, 'req_123');
+**Indexes**:
+- `subscriptions_tenant_id_idx` - For tenant lookups
+- `subscriptions_stripe_subscription_id_idx` - UNIQUE on Stripe ID
+- `subscriptions_status_idx` - For status filtering
 
--- AI Tokens (different rates)
-INSERT INTO usage_events (tenant_id, event_type, quantity, cost_cents, idempotency_key) VALUES
-(tenant_id, 'ai_tokens_input', 1000, 50, 'req_124'),         -- $0.0005 per 1k
-(tenant_id, 'ai_tokens_cached_input', 1000, 15, 'req_125'),  -- $0.00015 per 1k (cheaper)
-(tenant_id, 'ai_tokens_output', 500, 100, 'req_126'),        -- $0.002 per 1k
-(tenant_id, 'ai_tokens_reasoning', 500, 100, 'req_127');     -- $0.002 per 1k (output rate)
-```
+**Constraints**:
+- Foreign key on tenant_id (CASCADE on delete)
+- Foreign key on plan_id (RESTRICT on delete)
+- CHECK status IN ('active', 'past_due', 'canceled')
 
-**Critical Design Notes**:
-- Immutable after creation (no updates)
-- Quantity always positive
-- Cost stored in cents (integer precision)
-- Idempotency key uniqueness at DB level
-- Indexed by tenant_id for query performance
+**Notes**:
+- One subscription per tenant (current plan)
+- Stripe IDs link to Stripe account
+- Status tracks subscription health
 
 ---
 
-### idempotency_keys
-Cached responses for retry-safe operations.
+### 4. users
 
-```sql
-CREATE TABLE idempotency_keys (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL,
-    key VARCHAR(255) NOT NULL,
-    request_body JSONB,
-    response_body JSONB NOT NULL,
-    status_code INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP + INTERVAL '24 hours',
-    
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-    
-    -- CRITICAL: Uniqueness prevents duplicate processing
-    UNIQUE(tenant_id, key),
-    
-    INDEX idx_idempotency_keys_tenant_id (tenant_id),
-    INDEX idx_idempotency_keys_expires_at (expires_at)
-);
-```
+Tenant users (for authentication).
 
-**Fields**:
-- `key`: Client-provided idempotency key
-- `request_body`: Original request (JSONB for verification)
-- `response_body`: Cached response to return
-- `status_code`: HTTP status to return
-- `expires_at`: Auto-cleanup old keys
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique user ID |
+| `tenant_id` | UUID | NOT NULL, FK → tenants | Tenant reference |
+| `email` | VARCHAR(255) | NOT NULL | User email (unique per tenant) |
+| `hashed_password` | VARCHAR(255) | NOT NULL | bcrypt hashed password |
+| `is_active` | BOOLEAN | DEFAULT true | Account active status |
+| `created_at` | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
+| `updated_at` | TIMESTAMP | DEFAULT NOW() | Last update timestamp |
 
-**Flow**:
-1. Client sends request with `idempotency_key`
-2. Check if key exists in table
-3. If exists, return cached response (same status + body)
-4. If not, process request
-5. Store request + response + status in table
-6. Return response
+**Indexes**:
+- `users_tenant_id_email_idx` - UNIQUE on (tenant_id, email)
+- `users_tenant_id_idx` - For tenant lookups
+
+**Constraints**:
+- Foreign key on tenant_id (CASCADE on delete)
+- UNIQUE (tenant_id, email) - Email unique per tenant only
+
+**Notes**:
+- Passwords hashed with bcrypt (cost 12)
+- Email unique within tenant scope
+- is_active allows soft deactivation
 
 ---
 
-### webhook_events
-Stripe webhooks (immutable log for audit).
+### 5. usage_events
 
-```sql
-CREATE TABLE webhook_events (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    event_id VARCHAR(255) UNIQUE NOT NULL,
-    event_type VARCHAR(50) NOT NULL,
-    tenant_id UUID,
-    payload JSONB NOT NULL,
-    processed BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    processed_at TIMESTAMP,
-    
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE SET NULL,
-    
-    -- CRITICAL: Uniqueness prevents duplicate event processing
-    UNIQUE(event_id),
-    
-    INDEX idx_webhook_events_event_id (event_id),
-    INDEX idx_webhook_events_tenant_id (tenant_id),
-    INDEX idx_webhook_events_processed (processed),
-    INDEX idx_webhook_events_created_at (created_at)
-);
-```
+Metering records (billable actions).
 
-**Fields**:
-- `event_id`: Stripe's event ID (e.g., evt_test_123)
-- `event_type`: checkout.session.completed, customer.subscription.updated
-- `payload`: Full Stripe event JSON
-- `processed`: Whether we processed this event
-- `processed_at`: When it was processed
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique event ID |
+| `tenant_id` | UUID | NOT NULL, FK → tenants | Tenant reference |
+| `type` | VARCHAR(50) | NOT NULL | api_call, ai_tokens, etc. |
+| `quantity` | INTEGER | NOT NULL | Number of units |
+| `cost_cents` | INTEGER | NOT NULL | Cost in cents |
+| `idempotency_key` | VARCHAR(255) | NOT NULL | Deduplication key |
+| `metadata` | JSONB | | Additional data |
+| `timestamp` | TIMESTAMP | NOT NULL, DEFAULT NOW() | Event time |
+| `created_at` | TIMESTAMP | DEFAULT NOW() | Record creation time |
 
-**Critical Notes**:
-- `event_id` is UNIQUE across all time
-- Prevents Stripe webhook retries from creating duplicates
-- Stripe event IDs are guaranteed unique per account
+**Indexes**:
+- `usage_events_tenant_id_type_timestamp_idx` - Main query index
+- `usage_events_tenant_id_idempotency_key_idx` - For deduplication
+- `usage_events_timestamp_idx` - For time-based queries
+
+**Constraints**:
+- Foreign key on tenant_id (CASCADE on delete)
+- UNIQUE (tenant_id, idempotency_key) - **Critical for idempotency**
+- CHECK quantity > 0
+- CHECK cost_cents >= 0
+
+**Notes**:
+- **UNIQUE (tenant_id, idempotency_key)** prevents double-charging
+- Timestamp is event occurrence time
+- cost_cents pre-calculated for quick rollups
+- metadata stores extra info (model, tokens, etc.)
 
 ---
 
-### users (Authentication)
-User accounts (optional, for future multi-user support).
+### 6. webhook_events
 
-```sql
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID NOT NULL,
-    email VARCHAR(255) NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
-    
-    UNIQUE(tenant_id, email),
-    INDEX idx_users_tenant_id (tenant_id),
-    INDEX idx_users_email (email)
-);
-```
+Stripe webhook event deduplication.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique record ID |
+| `event_id` | VARCHAR(255) | NOT NULL, UNIQUE | Stripe event ID |
+| `event_type` | VARCHAR(255) | NOT NULL | Event type (checkout.session.completed) |
+| `data` | JSONB | NOT NULL | Full webhook payload |
+| `processed` | BOOLEAN | DEFAULT false | Processing status |
+| `error_message` | TEXT | | Error details if failed |
+| `created_at` | TIMESTAMP | DEFAULT NOW() | Received timestamp |
+| `processed_at` | TIMESTAMP | | Processing completion time |
+
+**Indexes**:
+- `webhook_events_event_id_idx` - UNIQUE on event_id
+- `webhook_events_event_type_idx` - For type filtering
+- `webhook_events_processed_idx` - For unprocessed events
+
+**Constraints**:
+- UNIQUE event_id - **Prevents duplicate processing**
+
+**Notes**:
+- Idempotent webhook handling
+- Stores complete payload for replay
+- processed flag tracks completion
+- error_message for debugging
+
+---
+
+## Advanced Feature Tables
+
+### 7. invoices
+
+Generated monthly invoices.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique invoice ID |
+| `tenant_id` | UUID | NOT NULL, FK → tenants | Tenant reference |
+| `invoice_number` | VARCHAR(50) | NOT NULL, UNIQUE | INV-YYYY-MM-NNNN |
+| `period_start` | TIMESTAMP | NOT NULL | Billing period start |
+| `period_end` | TIMESTAMP | NOT NULL | Billing period end |
+| `total_cents` | INTEGER | NOT NULL | Invoice total in cents |
+| `status` | VARCHAR(50) | NOT NULL | DRAFT, ISSUED, PAID, CANCELED |
+| `stripe_invoice_id` | VARCHAR(255) | | Stripe invoice ID |
+| `created_at` | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
+| `issued_at` | TIMESTAMP | | Issued timestamp |
+| `paid_at` | TIMESTAMP | | Payment timestamp |
+| `due_date` | TIMESTAMP | | Due date |
+
+**Indexes**:
+- `invoices_tenant_id_period_idx` - For tenant period lookups
+- `invoices_invoice_number_idx` - UNIQUE on number
+- `invoices_status_idx` - For status filtering
+
+---
+
+### 8. invoice_line_items
+
+Invoice detail rows.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique line item ID |
+| `invoice_id` | UUID | NOT NULL, FK → invoices | Invoice reference |
+| `description` | VARCHAR(255) | NOT NULL | Item description |
+| `quantity` | INTEGER | NOT NULL | Quantity |
+| `unit_price_cents` | INTEGER | NOT NULL | Price per unit |
+| `total_cents` | INTEGER | NOT NULL | Line total |
+| `created_at` | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
+
+**Constraints**:
+- Foreign key on invoice_id (CASCADE on delete)
+
+---
+
+### 9. alerts
+
+Usage alerts (80%, 100%, overage).
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique alert ID |
+| `tenant_id` | UUID | NOT NULL, FK → tenants | Tenant reference |
+| `alert_type` | VARCHAR(50) | NOT NULL | threshold_80, threshold_100, overage |
+| `threshold_percent` | INTEGER | | Alert threshold |
+| `status` | VARCHAR(50) | NOT NULL | active, acknowledged, resolved |
+| `triggered_at` | TIMESTAMP | NOT NULL | When alert triggered |
+| `acknowledged_at` | TIMESTAMP | | When acknowledged |
+| `resolved_at` | TIMESTAMP | | When resolved |
+| `created_at` | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
+
+---
+
+### 10. alert_preferences
+
+Notification settings per tenant.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique preference ID |
+| `tenant_id` | UUID | NOT NULL, FK → tenants | Tenant reference |
+| `alert_type` | VARCHAR(50) | NOT NULL | Alert type |
+| `email_enabled` | BOOLEAN | DEFAULT true | Send email |
+| `webhook_enabled` | BOOLEAN | DEFAULT false | Send webhook |
+| `webhook_url` | VARCHAR(500) | | Webhook URL |
+| `created_at` | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
+| `updated_at` | TIMESTAMP | DEFAULT NOW() | Last update timestamp |
+
+---
+
+### 11. prorated_adjustments
+
+Mid-cycle plan change billing.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique adjustment ID |
+| `tenant_id` | UUID | NOT NULL, FK → tenants | Tenant reference |
+| `from_plan_id` | VARCHAR(50) | NOT NULL, FK → plans | Original plan |
+| `to_plan_id` | VARCHAR(50) | NOT NULL, FK → plans | New plan |
+| `adjustment_cents` | INTEGER | NOT NULL | Credit/charge in cents |
+| `daily_rate_from` | INTEGER | NOT NULL | From plan daily rate |
+| `daily_rate_to` | INTEGER | NOT NULL | To plan daily rate |
+| `days_remaining` | INTEGER | NOT NULL | Days in billing cycle |
+| `adjustment_type` | VARCHAR(50) | NOT NULL | credit, charge |
+| `applied_at` | TIMESTAMP | NOT NULL | When applied |
+| `created_at` | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
+
+---
+
+### 12. reconciliation_runs
+
+Nightly Stripe vs DB sync audit.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique run ID |
+| `run_date` | TIMESTAMP | NOT NULL | When run executed |
+| `total_tenants` | INTEGER | NOT NULL | Tenants checked |
+| `issues_found` | INTEGER | NOT NULL | Mismatches found |
+| `issues_resolved` | INTEGER | NOT NULL | Issues fixed |
+| `duration_seconds` | INTEGER | NOT NULL | Execution time |
+| `status` | VARCHAR(50) | NOT NULL | success, partial, failed |
+| `error_message` | TEXT | | Error details if failed |
+| `created_at` | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
+
+---
+
+### 13. reconciliation_issues
+
+Issues found during reconciliation.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique issue ID |
+| `run_id` | UUID | NOT NULL, FK → reconciliation_runs | Run reference |
+| `tenant_id` | UUID | NOT NULL, FK → tenants | Tenant reference |
+| `issue_type` | VARCHAR(50) | NOT NULL | subscription_mismatch, etc. |
+| `description` | TEXT | NOT NULL | Issue details |
+| `stripe_data` | JSONB | | Stripe data snapshot |
+| `local_data` | JSONB | | Local data snapshot |
+| `resolved` | BOOLEAN | DEFAULT false | Resolution status |
+| `resolved_at` | TIMESTAMP | | When resolved |
+| `resolution_action` | VARCHAR(255) | | What was done |
+| `created_at` | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
+
+---
+
+### 14. overage_charges
+
+Usage beyond quota billing.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique charge ID |
+| `tenant_id` | UUID | NOT NULL, FK → tenants | Tenant reference |
+| `subscription_id` | UUID | NOT NULL, FK → subscriptions | Subscription reference |
+| `usage_type` | VARCHAR(50) | NOT NULL | api_call, ai_tokens |
+| `overage_quantity` | INTEGER | NOT NULL | Units over quota |
+| `unit_price_cents` | INTEGER | NOT NULL | Price per unit |
+| `total_cents` | INTEGER | NOT NULL | Total overage charge |
+| `period_start` | TIMESTAMP | NOT NULL | Billing period start |
+| `period_end` | TIMESTAMP | NOT NULL | Billing period end |
+| `status` | VARCHAR(50) | NOT NULL | pending, charged, failed |
+| `stripe_charge_id` | VARCHAR(255) | | Stripe charge ID |
+| `created_at` | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
+| `charged_at` | TIMESTAMP | | When charged |
+
+---
+
+### 15. overage_policies
+
+Overage pricing configuration per plan.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Unique policy ID |
+| `plan_id` | VARCHAR(50) | NOT NULL, FK → plans | Plan reference |
+| `api_calls_price_cents` | INTEGER | NOT NULL | Price per 1000 calls |
+| `ai_tokens_price_cents` | INTEGER | NOT NULL | Price per 1000 tokens |
+| `suspension_limit_multiplier` | DECIMAL | NOT NULL | Limit before suspension |
+| `created_at` | TIMESTAMP | DEFAULT NOW() | Creation timestamp |
+| `updated_at` | TIMESTAMP | DEFAULT NOW() | Last update timestamp |
+
+---
+
+### 16. saved_reports & report_runs
+
+Analytics and reporting.
+
+**saved_reports**:
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Unique report ID |
+| `tenant_id` | UUID | Tenant reference |
+| `report_type` | VARCHAR(50) | usage, revenue, costs |
+| `parameters` | JSONB | Report filters |
+| `created_at` | TIMESTAMP | Creation timestamp |
+
+**report_runs**:
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Unique run ID |
+| `report_id` | UUID | Report reference |
+| `data` | JSONB | Report results |
+| `generated_at` | TIMESTAMP | Generation timestamp |
 
 ---
 
 ## Query Patterns
 
-### Get Current Usage (Aggregation)
+### High-Performance Queries
 
+#### 1. Get Current Month Usage
 ```sql
-SELECT
-  SUM(CASE WHEN event_type = 'api_call' THEN quantity ELSE 0 END) as api_calls_used,
-  SUM(CASE WHEN event_type LIKE 'ai_tokens_%' THEN quantity ELSE 0 END) as ai_tokens_used,
+SELECT 
+  SUM(CASE WHEN type = 'api_call' THEN quantity ELSE 0 END) as api_calls_used,
+  SUM(CASE WHEN type = 'ai_tokens' THEN quantity ELSE 0 END) as tokens_used,
   SUM(cost_cents) as total_cost_cents
 FROM usage_events
-WHERE tenant_id = $1
-  AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)
-  AND created_at < date_trunc('month', CURRENT_TIMESTAMP) + INTERVAL '1 month';
+WHERE tenant_id = $1 
+  AND timestamp >= date_trunc('month', now())
+  AND timestamp < date_trunc('month', now() + interval '1 month');
 ```
 
-### Check Quota Before Recording
+**Index Used**: `usage_events_tenant_id_type_timestamp_idx`
 
+#### 2. Check Idempotency
 ```sql
--- Get current usage
-WITH monthly_usage AS (
-  SELECT
-    SUM(CASE WHEN event_type = 'api_call' THEN quantity ELSE 0 END) as api_calls_used
-  FROM usage_events
-  WHERE tenant_id = $1
-    AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)
+SELECT id, cost_cents FROM usage_events
+WHERE tenant_id = $1 AND idempotency_key = $2;
+```
+
+**Index Used**: `usage_events_tenant_id_idempotency_key_idx`
+
+#### 3. Get Unprocessed Webhooks
+```sql
+SELECT * FROM webhook_events
+WHERE processed = false
+ORDER BY created_at ASC;
+```
+
+**Index Used**: `webhook_events_processed_idx`
+
+#### 4. Find Overdue Invoices
+```sql
+SELECT * FROM invoices
+WHERE tenant_id = $1 
+  AND status != 'PAID'
+  AND due_date < NOW();
+```
+
+**Index Used**: `invoices_tenant_id_period_idx`
+
+---
+
+## Data Isolation (Tenant Security)
+
+All queries enforce tenant isolation:
+
+```python
+# Every query includes tenant_id filter
+query = session.query(UsageEvent).filter(
+    UsageEvent.tenant_id == tenant_id  # ← ALWAYS required
 )
-SELECT
-  p.api_calls_limit,
-  mu.api_calls_used,
-  (p.api_calls_limit - COALESCE(mu.api_calls_used, 0)) as remaining
-FROM subscriptions s
-JOIN subscription_plans p ON s.plan_id = p.id
-CROSS JOIN monthly_usage mu
-WHERE s.tenant_id = $1;
 ```
 
-### Prevent Duplicate Usage (Idempotency Check)
-
-```sql
--- Check if idempotency key already processed
-SELECT response_body, status_code
-FROM idempotency_keys
-WHERE tenant_id = $1 AND key = $2;
-
--- If exists, return cached response
--- If not exists, insert new usage event with idempotency key
-
--- Database will reject duplicate if key already exists (UNIQUE constraint)
-```
-
-### Monthly Cost Breakdown by Type
-
-```sql
-SELECT
-  event_type,
-  SUM(quantity) as total_quantity,
-  SUM(cost_cents) as total_cost_cents
-FROM usage_events
-WHERE tenant_id = $1
-  AND created_at >= date_trunc('month', CURRENT_TIMESTAMP)
-GROUP BY event_type
-ORDER BY total_cost_cents DESC;
-```
-
-### Tenant Data Isolation
-
-```sql
--- Every query scoped by tenant_id
-SELECT * FROM usage_events WHERE tenant_id = $1;  -- Safe
-SELECT * FROM usage_events;                        -- WRONG: Gets all data!
-
--- Example in application code:
-query = db.query(UsageEvent).filter_by(tenant_id=current_tenant_id)
-```
+**Foreign Key Constraints** ensure data integrity:
+- Subscriptions → Tenants (CASCADE delete)
+- Usage Events → Tenants (CASCADE delete)
+- Invoices → Tenants (CASCADE delete)
+- Users → Tenants (CASCADE delete)
 
 ---
 
-## Indexes
+## Indexing Strategy
 
-**Query Performance**:
+**40+ Indexes** optimize for:
 
-```sql
--- Fast tenant lookups
-INDEX idx_subscriptions_tenant_id (tenant_id);
-INDEX idx_usage_events_tenant_id (tenant_id);
-INDEX idx_webhook_events_tenant_id (tenant_id);
-
--- Fast time-range queries (billing period)
-INDEX idx_usage_events_created_at (created_at);
-INDEX idx_webhook_events_created_at (created_at);
-
--- Composite index for common queries
-INDEX idx_usage_events_tenant_created (tenant_id, created_at);
-
--- Deduplication lookups (fast)
-UNIQUE idx_idempotency_keys (tenant_id, key);
-UNIQUE idx_webhook_events (event_id);
-UNIQUE idx_usage_events_idempotency (tenant_id, idempotency_key);
-```
+1. **Tenant Filtering** - Every query includes tenant_id
+2. **Time-Based Queries** - Aggregation by month/day
+3. **Uniqueness Constraints** - Idempotency keys, Stripe IDs
+4. **Status Filtering** - Active subscriptions, unprocessed webhooks
+5. **Stripe Lookups** - Fast synchronization
 
 ---
 
-## Constraints
+## Migration Management
 
-### Uniqueness Constraints (Data Integrity)
+**Alembic Versions**: 8 migrations
 
-```sql
-UNIQUE(tenants.email)                           -- No duplicate emails
-UNIQUE(subscription_plans.name)                  -- No duplicate plans
-UNIQUE(subscriptions.tenant_id)                  -- One sub per tenant
-UNIQUE(subscriptions.stripe_subscription_id)     -- One Stripe ID per sub
-UNIQUE(idempotency_keys.tenant_id, key)          -- One key per tenant (deduplication)
-UNIQUE(usage_events.tenant_id, idempotency_key)  -- One usage per key (no double-count)
-UNIQUE(webhook_events.event_id)                  -- One webhook per Stripe event (deduplication)
+```
+001_initial_schema.py      - Core tables
+002_subscriptions.py        - Subscription management
+003_invoices.py            - Invoicing
+004_alerts.py              - Alert system
+005_proration.py           - Plan changes
+006_reconciliation.py      - Audit jobs
+007_overages.py            - Overage billing
+008_reporting.py           - Analytics
 ```
 
-### Foreign Key Constraints (Referential Integrity)
-
-```sql
-FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
--- When tenant deleted, cascade delete their subscriptions and usage
-
-FOREIGN KEY (plan_id) REFERENCES subscription_plans(id)
--- Subscriptions must reference valid plans
-```
-
----
-
-## Data Types
-
-### Important Decisions
-
-**Integers for Money** (NOT floats):
-```sql
-cost_cents INTEGER  -- Store as cents (e.g., $5.00 = 500)
-price_cents INTEGER -- Never use NUMERIC or FLOAT for money
-```
-
-**UUID for IDs** (NOT serial integers):
-```sql
-id UUID PRIMARY KEY DEFAULT gen_random_uuid()  -- Secure, distributed
--- NOT: id SERIAL PRIMARY KEY  -- Predictable, can leak data
-```
-
-**JSONB for Flexible Data**:
-```sql
-payload JSONB  -- Stripe webhook payload (unstructured)
-features JSONB  -- Plan features (dynamic)
-```
-
-**VARCHAR for Strings**:
-```sql
-event_type VARCHAR(50)  -- Fixed length for performance
-email VARCHAR(255)      -- Email addresses
-```
-
-**TIMESTAMP for Dates**:
-```sql
-created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-expires_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP + INTERVAL '24 hours'
-```
-
----
-
-## Migrations
-
-All schema changes via Alembic (version controlled).
-
+Run migrations:
 ```bash
-# Create migration
-alembic revision --autogenerate -m "Add webhook_events table"
-
-# Apply migrations
 alembic upgrade head
-
-# Rollback
-alembic downgrade -1
-
-# See status
-alembic current
 ```
 
 ---
 
-## Backup & Recovery
+## Backup Strategy
 
-### Automated Backups
+**Daily Backups**:
 ```bash
-# Daily backup (cron job)
-pg_dump flyrank_billing > /backups/flyrank_$(date +%Y%m%d).sql
+# Full backup
+pg_dump flyrank_billing | gzip > backup-$(date +%Y%m%d).sql.gz
 
-# Restore from backup
-psql flyrank_billing < /backups/flyrank_20240101.sql
-```
-
-### Point-in-Time Recovery
-```bash
-# With Write-Ahead Logs enabled (WAL)
-# Can recover to any point in time within retention period
+# Restore
+gunzip < backup-20240915.sql.gz | psql flyrank_billing
 ```
 
 ---
 
 ## Performance Tuning
 
-### Connection Pooling
+**PostgreSQL Configuration**:
+```
+shared_buffers = 256MB
+effective_cache_size = 1GB
+work_mem = 64MB
+maintenance_work_mem = 512MB
+random_page_cost = 1.1
+```
+
+**Connection Pooling**:
 ```python
-# SQLAlchemy
 engine = create_engine(
     DATABASE_URL,
-    pool_size=10,
-    max_overflow=20,
-    pool_pre_ping=True
+    pool_size=20,
+    max_overflow=40,
+    pool_pre_ping=True,
 )
 ```
 
-### Query Optimization
-```python
-# Eager loading (avoid N+1 queries)
-db.query(Subscription).options(
-    joinedload(Subscription.plan)
-).filter_by(tenant_id=tenant_id).first()
-```
-
-### Slow Query Detection
-```sql
--- Enable slow query log
-log_min_duration_statement = 1000  -- Log queries >1 second
-```
-
 ---
 
-## Security
-
-### SQL Injection Prevention
-```python
-# ✅ SAFE: Parameterized queries (SQLAlchemy)
-db.query(UsageEvent).filter_by(tenant_id=tenant_id)
-
-# ❌ UNSAFE: String concatenation
-query = f"SELECT * FROM usage_events WHERE tenant_id = '{tenant_id}'"
-```
-
-### Tenant Data Isolation
-```python
-# ✅ SAFE: All queries include tenant filter
-events = db.query(UsageEvent).filter_by(tenant_id=current_tenant_id).all()
-
-# ❌ UNSAFE: Missing tenant filter
-events = db.query(UsageEvent).all()  # Gets ALL tenants' data!
-```
-
----
-
-**Last Updated**: 2024
-**PostgreSQL Version**: 16
-**Status**: Production Ready
+**Last Updated**: September 2, 2026

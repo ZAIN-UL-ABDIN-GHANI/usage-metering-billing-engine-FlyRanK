@@ -1,131 +1,311 @@
-# DEPLOYMENT.md - Production Deployment Guide
+# Deployment Guide
+
+Production deployment guide for FlyRank Billing Engine.
 
 ---
 
 ## Pre-Deployment Checklist
 
-- [ ] All tests passing
-- [ ] Environment variables configured
-- [ ] Stripe keys verified (live mode if production)
-- [ ] Database backups configured
-- [ ] SSL certificates obtained
-- [ ] Domain DNS updated
-- [ ] Monitoring setup
-- [ ] Alerting configured
+### Configuration
+- [ ] Update `SECRET_KEY` to strong 32+ character random string
+- [ ] Set `DEBUG=false`
+- [ ] Set `ENVIRONMENT=production`
+- [ ] Set `LOG_LEVEL=warning`
+- [ ] Update `CORS_ORIGINS` to production domains only
+- [ ] Configure database URL for production PostgreSQL
+- [ ] Add Stripe live keys (when ready for production payments)
+
+### Security
+- [ ] Generate new database password
+- [ ] Configure HTTPS/TLS certificates (Let's Encrypt)
+- [ ] Set up firewall rules (only allow 80, 443)
+- [ ] Enable security headers in Nginx
+- [ ] Configure rate limiting
+- [ ] Set up logging and monitoring
+- [ ] Enable audit logging
+
+### Database
+- [ ] Create production PostgreSQL instance
+- [ ] Configure database backups (daily)
+- [ ] Set up replication (optional)
+- [ ] Run migrations on production
+- [ ] Verify database performance indexes
+- [ ] Set up monitoring
+
+### Monitoring & Alerting
+- [ ] Set up application monitoring (DataDog, New Relic, etc.)
+- [ ] Configure error tracking (Sentry)
+- [ ] Set up alerting (PagerDuty, OpsGenie)
+- [ ] Configure logging (ELK, CloudWatch, etc.)
+- [ ] Health check monitoring
+
+### Testing
+- [ ] Run full test suite
+- [ ] Verify all endpoints in staging
+- [ ] Load test (1000+ concurrent users)
+- [ ] Test failover scenarios
+- [ ] Verify webhook retries
 
 ---
 
-## Production Environment Setup
+## Docker Compose Production
 
-### 1. Update Environment Variables
-
-```bash
-# Copy and edit production .env
-cp .env.example .env.production
-
-# Set all production values:
-ENVIRONMENT=production
-DATABASE_URL=postgresql://user:pass@db.example.com/flyrank_billing
-STRIPE_API_KEY=sk_live_your_live_key  # NOT test key
-STRIPE_WEBHOOK_SECRET=whsec_live_secret
-SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
-POSTGRES_PASSWORD=your_secure_password
-CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
-```
-
-### 2. SSL/TLS Certificates
-
-**Using Let's Encrypt with Certbot**:
+### Build Production Images
 
 ```bash
-# Install Certbot
-sudo apt-get install certbot python3-certbot-nginx
-
-# Get certificate
-sudo certbot certonly --standalone \
-  -d yourdomain.com \
-  -d www.yourdomain.com \
-  --non-interactive \
-  --agree-tos \
-  -m admin@yourdomain.com
-
-# Certificates saved to:
-# /etc/letsencrypt/live/yourdomain.com/fullchain.pem
-# /etc/letsencrypt/live/yourdomain.com/privkey.pem
-
-# Copy to project
-sudo cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem ./ssl/cert.pem
-sudo cp /etc/letsencrypt/live/yourdomain.com/privkey.pem ./ssl/key.pem
-sudo chown $USER:$USER ./ssl/*
-```
-
-### 3. Database Setup
-
-**Option A: Managed PostgreSQL (Recommended)**
-
-```bash
-# Use AWS RDS, Google Cloud SQL, or similar
-DATABASE_URL=postgresql://user:password@db-prod.region.rds.amazonaws.com:5432/flyrank_billing
-
-# Run migrations
-docker-compose exec backend alembic upgrade head
-```
-
-**Option B: Self-Hosted PostgreSQL**
-
-```bash
-# Create database
-docker volume create postgres_data_prod
-
-# Update docker-compose
-DATABASE_URL=postgresql://flyrank_user:password@postgres:5432/flyrank_billing
-
-# Start container with volume
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d postgres
-```
-
----
-
-## Deployment Methods
-
-### Method 1: Docker Compose (Simple Production)
-
-**Step 1: Build Images**
-
-```bash
-docker-compose build --no-cache
-
-# Tag for registry
-docker tag flyrank-billing-backend:latest myregistry.azurecr.io/flyrank-backend:1.0.0
-docker tag flyrank-billing-frontend:latest myregistry.azurecr.io/flyrank-frontend:1.0.0
+docker build -f Dockerfile.backend -t registry.example.com/flyrank-backend:latest .
+docker build -f frontend/Dockerfile -t registry.example.com/flyrank-frontend:latest frontend/
 
 # Push to registry
-docker push myregistry.azurecr.io/flyrank-backend:1.0.0
-docker push myregistry.azurecr.io/flyrank-frontend:1.0.0
+docker push registry.example.com/flyrank-backend:latest
+docker push registry.example.com/flyrank-frontend:latest
 ```
 
-**Step 2: Deploy**
+### Docker Compose Production File
 
-```bash
-# Load environment
-export $(cat .env.production | xargs)
-
-# Start services with production profile
-docker-compose --profile production up -d
-
-# Verify
-docker-compose ps
-docker-compose logs backend frontend
-```
-
-### Method 2: Kubernetes (Scalable Production)
+Create `docker-compose.prod.yml`:
 
 ```yaml
-# kubernetes/deployment.yaml
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: flyrank_postgres_prod
+    environment:
+      POSTGRES_DB: flyrank_billing
+      POSTGRES_USER: flyrank_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flyrank_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - flyrank_network
+    restart: always
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=1GB"
+      - "-c"
+      - "work_mem=64MB"
+
+  backend:
+    image: registry.example.com/flyrank-backend:latest
+    container_name: flyrank_backend_prod
+    environment:
+      DATABASE_URL: postgresql://flyrank_user:${POSTGRES_PASSWORD}@postgres:5432/flyrank_billing
+      STRIPE_API_KEY: ${STRIPE_API_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      SECRET_KEY: ${SECRET_KEY}
+      ENVIRONMENT: production
+      LOG_LEVEL: warning
+      DEBUG: "false"
+      WORKERS: ${WORKERS:-4}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - flyrank_network
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    image: registry.example.com/flyrank-frontend:latest
+    container_name: flyrank_frontend_prod
+    environment:
+      VITE_API_URL: https://api.example.com/api
+      VITE_STRIPE_PUBLIC_KEY: ${VITE_STRIPE_PUBLIC_KEY}
+      NODE_ENV: production
+    depends_on:
+      - backend
+    networks:
+      - flyrank_network
+    restart: always
+
+  nginx:
+    image: nginx:alpine
+    container_name: flyrank_nginx_prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl/cert.pem:/etc/nginx/ssl/cert.pem:ro
+      - ./ssl/key.pem:/etc/nginx/ssl/key.pem:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - flyrank_network
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_prod_data:
+    driver: local
+
+networks:
+  flyrank_network:
+    driver: bridge
+```
+
+### Deploy
+
+```bash
+# Set production environment variables
+export STRIPE_API_KEY=sk_live_...
+export STRIPE_WEBHOOK_SECRET=whsec_...
+export SECRET_KEY=$(openssl rand -base64 32)
+export POSTGRES_PASSWORD=$(openssl rand -base64 32)
+
+# Start production services
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# Verify services
+docker-compose ps
+curl https://api.example.com/api/health
+
+# View logs
+docker-compose logs -f backend
+```
+
+---
+
+## Kubernetes Deployment
+
+### Build Images for K8s
+
+```bash
+docker build -f Dockerfile.backend -t myregistry/flyrank-backend:v0.1.0 .
+docker build -f frontend/Dockerfile -t myregistry/flyrank-frontend:v0.1.0 frontend/
+
+docker push myregistry/flyrank-backend:v0.1.0
+docker push myregistry/flyrank-frontend:v0.1.0
+```
+
+### Create ConfigMaps and Secrets
+
+```bash
+# Create namespace
+kubectl create namespace flyrank
+
+# Create secrets
+kubectl create secret generic flyrank-secrets \
+  --from-literal=stripe-api-key=sk_live_... \
+  --from-literal=stripe-webhook-secret=whsec_... \
+  --from-literal=secret-key=$(openssl rand -base64 32) \
+  --from-literal=db-password=$(openssl rand -base64 32) \
+  -n flyrank
+
+# Create configmap
+kubectl create configmap flyrank-config \
+  --from-literal=environment=production \
+  --from-literal=log-level=warning \
+  --from-literal=debug=false \
+  -n flyrank
+```
+
+### Deploy Statefulset for PostgreSQL
+
+```yaml
+# postgres-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: flyrank-postgres
+  namespace: flyrank
+spec:
+  serviceName: flyrank-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:16-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: flyrank_billing
+        - name: POSTGRES_USER
+          value: flyrank_user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: flyrank-secrets
+              key: db-password
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U flyrank_user
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U flyrank_user
+          initialDelaySeconds: 5
+          periodSeconds: 10
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: standard
+      resources:
+        requests:
+          storage: 100Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flyrank-postgres
+  namespace: flyrank
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+```
+
+### Deploy Backend
+
+```yaml
+# backend-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: flyrank-backend
+  namespace: flyrank
 spec:
   replicas: 3
   selector:
@@ -138,26 +318,59 @@ spec:
     spec:
       containers:
       - name: backend
-        image: myregistry.azurecr.io/flyrank-backend:1.0.0
+        image: myregistry/flyrank-backend:v0.1.0
         ports:
         - containerPort: 8000
         env:
         - name: DATABASE_URL
+          value: "postgresql://flyrank_user:$(DB_PASSWORD)@flyrank-postgres:5432/flyrank_billing"
+        - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: app-secrets
-              key: database-url
+              name: flyrank-secrets
+              key: db-password
         - name: STRIPE_API_KEY
           valueFrom:
             secretKeyRef:
-              name: app-secrets
+              name: flyrank-secrets
               key: stripe-api-key
+        - name: STRIPE_WEBHOOK_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: flyrank-secrets
+              key: stripe-webhook-secret
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: flyrank-secrets
+              key: secret-key
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: flyrank-config
+              key: environment
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: flyrank-config
+              key: log-level
+        - name: DEBUG
+          valueFrom:
+            configMapKeyRef:
+              name: flyrank-config
+              key: debug
         livenessProbe:
           httpGet:
             path: /api/health
             port: 8000
-          initialDelaySeconds: 10
+          initialDelaySeconds: 30
           periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/ready
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
         resources:
           requests:
             memory: "256Mi"
@@ -165,369 +378,289 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
-```
-
-**Deploy to Kubernetes**:
-
-```bash
-# Create secrets
-kubectl create secret generic app-secrets \
-  --from-literal=database-url=$DATABASE_URL \
-  --from-literal=stripe-api-key=$STRIPE_API_KEY
-
-# Deploy
-kubectl apply -f kubernetes/
-
-# Monitor
-kubectl get pods
-kubectl logs -f deployment/flyrank-backend
-```
-
 ---
-
-## Post-Deployment Verification
-
-### 1. Health Checks
-
-```bash
-# API health
-curl https://api.yourdomain.com/health
-# Expected: {"status": "healthy"}
-
-# Frontend loads
-curl -I https://yourdomain.com
-# Expected: HTTP 200 OK
-
-# Database connected
-curl https://api.yourdomain.com/api/usage \
-  -H "Authorization: Bearer $TEST_TOKEN" \
-  -H "X-Tenant-ID: $TEST_TENANT_ID"
-# Expected: Usage data
+apiVersion: v1
+kind: Service
+metadata:
+  name: flyrank-backend
+  namespace: flyrank
+spec:
+  type: ClusterIP
+  selector:
+    app: backend
+  ports:
+  - port: 8000
+    targetPort: 8000
 ```
 
-### 2. SSL Certificate
-
-```bash
-# Verify certificate
-curl -vI https://yourdomain.com
-
-# Should show:
-# * Server certificate:
-# *  subject: CN=yourdomain.com
-# *  issuer: C=US, O=Let's Encrypt
-# *  SSL certificate verify ok.
-```
-
-### 3. Database Migrations
-
-```bash
-# Verify migrations ran
-docker-compose exec backend alembic current
-# Expected: FlyRank_Billing_20240101_000000_initial_schema
-
-# Check tables
-docker-compose exec postgres psql -U flyrank_user -d flyrank_billing -c "\dt"
-```
-
-### 4. Stripe Webhook
-
-```bash
-# Test webhook delivery
-curl -X POST https://api.yourdomain.com/api/webhooks/stripe \
-  -H "stripe-signature: t=1234567890,v1=abc123..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "id": "evt_test_123",
-    "type": "checkout.session.completed",
-    "data": {"object": {}}
-  }'
-
-# Expected: 200 OK or 400 if signature invalid
-```
-
----
-
-## Monitoring & Alerting
-
-### 1. Application Metrics
-
-```bash
-# Prometheus endpoint
-curl https://api.yourdomain.com/api/metrics
-
-# Metrics to monitor:
-# - http_requests_total (traffic)
-# - http_request_duration_seconds (latency)
-# - database_connection_pool (pool utilization)
-```
-
-### 2. Logging
-
-**Structured Logging (JSON)**:
-
-```bash
-# Backend logs
-docker-compose logs backend | jq .
-
-# Example log entry:
-{
-  "timestamp": "2024-01-01T12:00:00Z",
-  "level": "info",
-  "message": "User logged in",
-  "user_id": "550e8400-e29b-41d4-a716-446655440000",
-  "tenant_id": "550e8400-e29b-41d4-a716-446655440001"
-}
-```
-
-### 3. Alerting Rules
+### Deploy Ingress
 
 ```yaml
-# prometheus/alerts.yml
-groups:
-- name: flyrank
+# ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: flyrank-ingress
+  namespace: flyrank
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - api.example.com
+    secretName: flyrank-tls
   rules:
-  - alert: HighErrorRate
-    expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
-    for: 1m
-    annotations:
-      summary: "High error rate detected"
-  
-  - alert: DatabaseDown
-    expr: up{job="postgres"} == 0
-    for: 1m
-    annotations:
-      summary: "Database unreachable"
-  
-  - alert: HighLatency
-    expr: histogram_quantile(0.95, http_request_duration_seconds_bucket) > 1
-    for: 5m
-    annotations:
-      summary: "P95 latency > 1 second"
+  - host: api.example.com
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: flyrank-backend
+            port:
+              number: 8000
 ```
+
+### Deploy
+
+```bash
+# Apply configurations
+kubectl apply -f postgres-statefulset.yaml
+kubectl apply -f backend-deployment.yaml
+kubectl apply -f ingress.yaml
+
+# Verify
+kubectl get pods -n flyrank
+kubectl logs -n flyrank -f deployment/flyrank-backend
+
+# Run migrations
+kubectl exec -n flyrank -it pod/flyrank-backend-xxxx -- \
+  alembic upgrade head
+```
+
+---
+
+## AWS ECS Deployment
+
+### Create ECS Cluster
+
+```bash
+aws ecs create-cluster --cluster-name flyrank-prod
+```
+
+### Create Task Definition
+
+```bash
+aws ecs register-task-definition --cli-input-json file://ecs-task-definition.json
+```
+
+### Create Service
+
+```bash
+aws ecs create-service \
+  --cluster flyrank-prod \
+  --service-name flyrank-backend \
+  --task-definition flyrank-backend:1 \
+  --desired-count 2 \
+  --load-balancers targetGroupArn=arn:aws:elasticloadbalancing:...
+```
+
+---
+
+## Cloud Run (Google Cloud)
+
+### Build and Push
+
+```bash
+gcloud builds submit --tag gcr.io/PROJECT_ID/flyrank-backend:latest
+gcloud builds submit -f frontend/Dockerfile --tag gcr.io/PROJECT_ID/flyrank-frontend:latest
+```
+
+### Deploy Backend
+
+```bash
+gcloud run deploy flyrank-backend \
+  --image gcr.io/PROJECT_ID/flyrank-backend:latest \
+  --platform managed \
+  --region us-central1 \
+  --memory 512Mi \
+  --set-env-vars="DATABASE_URL=${DB_URL},STRIPE_API_KEY=${STRIPE_KEY}" \
+  --allow-unauthenticated
+```
+
+---
+
+## Monitoring & Observability
+
+### Application Monitoring (DataDog)
+
+```python
+# Add to main.py
+from ddtrace import patch_all
+
+patch_all()
+```
+
+### Error Tracking (Sentry)
+
+```python
+import sentry_sdk
+
+sentry_sdk.init(dsn="https://...@sentry.io/...", environment="production")
+```
+
+### Logging (ELK/CloudWatch)
+
+Configure in environment variables for log destination.
+
+### Database Monitoring
+
+- Use CloudWatch or DataDog for PostgreSQL metrics
+- Monitor query performance
+- Alert on slow queries (>1s)
 
 ---
 
 ## Backup & Recovery
 
-### Automated Database Backups
-
-**Daily Backup Cron Job**:
+### Database Backups
 
 ```bash
-# /etc/cron.d/flyrank-backup
-0 2 * * * /usr/local/bin/backup-flyrank.sh
+# Daily backup
+0 2 * * * pg_dump -h postgres -U flyrank_user flyrank_billing | gzip > /backups/db-$(date +\%Y\%m\%d).sql.gz
 
-# /usr/local/bin/backup-flyrank.sh
-#!/bin/bash
-set -e
-
-DB_HOST=${POSTGRES_HOST:-localhost}
-DB_NAME="flyrank_billing"
-BACKUP_DIR="/backups/postgres"
-DATE=$(date +%Y%m%d_%H%M%S)
-
-mkdir -p $BACKUP_DIR
-
-pg_dump \
-  --verbose \
-  --format=custom \
-  --file=$BACKUP_DIR/flyrank_$DATE.dump \
-  postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$DB_HOST/$DB_NAME
-
-# Keep only last 30 days
-find $BACKUP_DIR -name "flyrank_*.dump" -mtime +30 -delete
-
-# Verify backup
-pg_restore --list $BACKUP_DIR/flyrank_$DATE.dump > /dev/null && \
-  echo "Backup verified: $BACKUP_DIR/flyrank_$DATE.dump"
+# Weekly full backup to S3
+0 3 * * 0 aws s3 cp /backups/db-$(date +\%Y\%m\%d).sql.gz s3://flyrank-backups/weekly/
 ```
 
 ### Point-in-Time Recovery
 
 ```bash
-# Restore to specific time
-pg_restore --clean --if-exists \
-  --format=custom \
-  $BACKUP_DIR/flyrank_20240101_020000.dump | \
-  psql postgresql://user:pass@host/flyrank_billing
-
-# Verify restore
-psql -c "SELECT COUNT(*) FROM usage_events;" postgresql://user:pass@host/flyrank_billing
+# Restore from backup
+gunzip < /backups/db-20240915.sql.gz | psql -h postgres -U flyrank_user flyrank_billing
 ```
 
 ---
 
-## Scaling & Performance
+## Scaling
 
 ### Horizontal Scaling
 
 ```bash
-# Run multiple backend instances
+# Scale backend replicas
 docker-compose up -d --scale backend=3
 
-# Nginx load balances between instances
+# Or in Kubernetes
+kubectl scale deployment flyrank-backend --replicas=5 -n flyrank
 ```
 
-### Database Scaling
+### Database Connection Pooling
 
-```bash
-# Read replicas for reporting queries
-# Primary: writes (metering, webhooks)
-# Replica: reads (usage dashboard)
-
-# Connection string with failover
-DATABASE_URL=postgresql://user:pass@primary.rds.amazonaws.com,replica.rds.amazonaws.com:5432/flyrank_billing
-```
-
-### Caching
+Use PgBouncer or connection pooling in SQLAlchemy:
 
 ```python
-# Redis cache for plan data (rarely changes)
-cache.set('plans', plans_data, ttl=3600)
+# app/database.py
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=20,
+    max_overflow=40,
+    pool_pre_ping=True,
+)
 ```
 
 ---
 
-## Security Hardening
+## Performance Tuning
 
-### 1. Firewall Rules
+### PostgreSQL Configuration
 
-```bash
-# Allow only HTTPS
-ufw allow 443/tcp
-ufw allow 80/tcp  # For certbot renewal
-ufw deny all
-
-# Restrict database access
-# Only allow from backend container/pod
+```sql
+-- Optimize for 8GB RAM server
+shared_buffers = 2GB
+effective_cache_size = 6GB
+work_mem = 50MB
+maintenance_work_mem = 512MB
 ```
 
-### 2. Secrets Management
-
-```bash
-# Use AWS Secrets Manager
-aws secretsmanager create-secret \
-  --name flyrank/production \
-  --secret-string '{"STRIPE_API_KEY":"sk_live_..."}'
-
-# Reference in application
-import json
-import boto3
-
-secrets = aws_secretsmanager.get_secret("flyrank/production")
-os.environ.update(json.loads(secrets['SecretString']))
-```
-
-### 3. Rate Limiting
+### Nginx Caching
 
 ```nginx
-# nginx.conf
-limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
-limit_req_zone $binary_remote_addr zone=auth_limit:10m rate=5r/m;
+proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=api_cache:10m;
 
 location /api/ {
-    limit_req zone=api_limit burst=20 nodelay;
-}
-
-location /api/auth/ {
-    limit_req zone=auth_limit burst=2 nodelay;
+    proxy_cache api_cache;
+    proxy_cache_valid 200 1m;
 }
 ```
 
 ---
 
-## Rollback Procedure
+## Disaster Recovery
 
-**If deployment fails**:
+### Regular Testing
+
+- Test backups weekly
+- Perform failover drills monthly
+- Document RTO (Recovery Time Objective) and RPO (Recovery Point Objective)
+
+### Failover Plan
+
+1. Promote standby database
+2. Update connection strings
+3. Verify application connectivity
+4. Monitor error rates
+5. Document incident
+
+---
+
+## Security in Production
+
+### HTTPS/TLS
+
+- Use Let's Encrypt for certificates (free)
+- Auto-renew with certbot
+- Use strong ciphers (TLS 1.2+)
+
+### Database Security
+
+- Use VPC/Security Groups to restrict access
+- Enable encryption at rest
+- Enable encryption in transit
+- Regular security patches
+
+### Secrets Management
+
+- Use managed secrets (AWS Secrets Manager, Vault)
+- Rotate credentials regularly
+- Audit access logs
+
+---
+
+## Support & Troubleshooting
+
+### Application Won't Start
 
 ```bash
-# Stop new version
-docker-compose down
+docker-compose logs backend
+# Check DATABASE_URL, STRIPE keys, SECRET_KEY
+```
 
-# Start previous version
-docker pull myregistry.azurecr.io/flyrank-backend:1.0.0-prev
-docker-compose up -d
+### Database Connection Issues
 
-# Verify
-curl https://api.yourdomain.com/api/health
+```bash
+docker-compose exec postgres psql -U flyrank_user -d flyrank_billing -c "SELECT 1"
+```
 
-# Investigate error in logs
-docker-compose logs backend --tail=100
+### Memory Issues
+
+```bash
+docker stats
+# Increase container limits or scale horizontally
 ```
 
 ---
 
-## Troubleshooting
-
-### API returns 500 errors
-
-```bash
-# Check backend logs
-docker-compose logs backend -f
-
-# Common causes:
-# - Database connection failed
-# - Stripe API key invalid
-# - Unhandled exception in code
-
-# Fix and redeploy
-docker-compose restart backend
-```
-
-### Stripe webhooks not processing
-
-```bash
-# Verify webhook secret matches
-echo $STRIPE_WEBHOOK_SECRET
-
-# Test webhook delivery
-stripe trigger checkout.session.completed
-
-# Check webhook logs
-docker-compose logs backend | grep webhook
-```
-
-### High database connections
-
-```bash
-# Check pool size
-SELECT datname, count(*) FROM pg_stat_activity GROUP BY datname;
-
-# Increase pool size in .env
-DATABASE_POOL_SIZE=20
-DATABASE_MAX_OVERFLOW=40
-
-# Restart
-docker-compose restart backend
-```
-
----
-
-## Upgrade Path
-
-### Database Schema Updates
-
-```bash
-# 1. Run new migrations on staging
-alembic upgrade head
-
-# 2. Test full flow
-pytest tests/
-
-# 3. Deploy to production (migrations run automatically)
-docker-compose restart backend
-
-# 4. Verify
-curl https://api.yourdomain.com/api/health
-```
-
-### API Backward Compatibility
-
-- Keep old API endpoints working (deprecation notice in 6 months)
-- Version new endpoints: `/api/v2/`
-- Client updates not required immediately
-
----
-
-**Last Updated**: 2024
-**Deployment Status**: Production Ready
+**Last Updated**: September 2026

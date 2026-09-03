@@ -1,6 +1,6 @@
-# API.md - FlyRank Billing Engine API Reference
+# API Reference - FlyRank Billing Engine
 
-Complete API documentation for the FlyRank SaaS Billing Engine.
+Complete API documentation for the FlyRank metering and billing engine.
 
 ---
 
@@ -8,25 +8,22 @@ Complete API documentation for the FlyRank SaaS Billing Engine.
 
 ```
 Development: http://localhost:8000/api
-Production: https://api.yourdomain.com/api
-```
-
-## Authentication
-
-All endpoints require JWT token in Authorization header:
-
-```
-Authorization: Bearer <jwt_token>
-X-Tenant-ID: <tenant_id>
+Production: https://api.flyrank.example.com/api
 ```
 
 ---
 
-## Authentication Endpoints
+## Authentication
 
-### POST /auth/login
+All endpoints (except `/health`) require JWT token in `Authorization` header:
 
-Login and receive JWT token.
+```bash
+curl -H "Authorization: Bearer <your-jwt-token>" http://localhost:8000/api/usage
+```
+
+### Login
+
+**Endpoint**: `POST /auth/login`
 
 **Request**:
 ```json
@@ -39,309 +36,218 @@ Login and receive JWT token.
 **Response** (200 OK):
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "token_type": "bearer",
-  "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "tenant@example.com"
+  "tenant_id": "tenant-123",
+  "expires_in": 86400
+}
+```
+
+---
+
+## Usage Metering
+
+### Record Billable Usage
+
+**Endpoint**: `POST /generate`
+
+**Description**: Record usage for a billable action (idempotent).
+
+**Request**:
+```json
+{
+  "prompt": "Explain quantum computing",
+  "idempotency_key": "req-123-unique"
+}
+```
+
+**Response** (200 OK):
+```json
+{
+  "result": "Quantum computing is...",
+  "tokens_used": {
+    "input": 5000,
+    "output": 8000,
+    "cached_input": 1000
+  },
+  "cost_cents": 125,
+  "quota_remaining": {
+    "api_calls": 999,
+    "ai_tokens": 92000
+  }
 }
 ```
 
 **Errors**:
-- 401 Unauthorized: Invalid credentials
-- 422 Unprocessable Entity: Missing fields
+- `429 Too Many Requests` - Quota exceeded
+- `402 Payment Required` - Subscription expired
+- `400 Bad Request` - Invalid input
+
+**Notes**:
+- `idempotency_key` ensures exactly-once processing
+- Same key returns cached response (no duplicate charge)
+- Required headers: `Authorization`, `X-Tenant-ID`
 
 ---
 
-### POST /auth/logout
+### Get Current Usage
 
-Invalidate current session.
+**Endpoint**: `GET /usage`
 
-**Headers**:
-```
-Authorization: Bearer <token>
-X-Tenant-ID: <tenant_id>
-```
+**Description**: Get current billing period usage and cost.
 
 **Response** (200 OK):
 ```json
 {
-  "status": "logged_out"
-}
-```
-
----
-
-### POST /auth/register
-
-Register new tenant (optional).
-
-**Request**:
-```json
-{
-  "email": "newcustomer@example.com",
-  "password": "secure_password",
-  "company_name": "Acme Corp"
-}
-```
-
-**Response** (201 Created):
-```json
-{
-  "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
-  "email": "newcustomer@example.com",
-  "access_token": "eyJhbGciOiJIUzI1NiIs...",
-  "plan": "Free"
-}
-```
-
----
-
-## Usage Metering Endpoints
-
-### POST /generate
-
-Billable endpoint for usage metering. Simulates API call with usage tracking.
-
-**Idempotency**: Each `idempotency_key` creates at most ONE usage event.
-
-**Request**:
-```json
-{
-  "prompt": "What is the capital of France?",
-  "idempotency_key": "req_abc123_xyz789"
-}
-```
-
-**Response** (200 OK):
-```json
-{
-  "result": "Paris is the capital of France.",
-  "tokens_used": 25,
-  "cost": 0.000025
-}
-```
-
-**Error - Quota Exceeded** (429 Too Many Requests):
-```json
-{
-  "error": "quota_exceeded",
-  "message": "You've reached your monthly limit of 1000 API calls.",
-  "current_usage": 1000,
-  "limit": 1000,
-  "reset_date": "2024-02-01T00:00:00Z",
-  "retry_after": 2678400
-}
-```
-
-**Error - Payment Required** (402 Payment Required):
-```json
-{
-  "error": "quota_exceeded",
-  "message": "You've reached your Free plan limit. Upgrade to Pro for higher limits.",
-  "current_usage": 1000,
-  "limit": 1000,
-  "plan": "Free"
-}
-```
-
-**Important Notes**:
-- `idempotency_key` must be unique per request
-- Same key with identical payload returns cached response
-- Same key with different payload returns error
-- Prevents double-charging on retries
-
----
-
-### GET /usage
-
-Get current usage metrics and cost for the billing period.
-
-**Response** (200 OK):
-```json
-{
-  "api_calls_used": 500,
+  "api_calls_used": 234,
   "api_calls_limit": 1000,
-  "ai_tokens_used": 50000,
+  "ai_tokens_used": 52500,
   "ai_tokens_limit": 100000,
-  "current_cost": 5000,
-  "current_cost_formatted": "$50.00",
-  "billing_period_start": "2024-01-01T00:00:00Z",
-  "billing_period_end": "2024-02-01T00:00:00Z",
+  "current_cost_cents": 50000,
   "plan_name": "Free",
-  "days_remaining": 8
+  "plan_id": "free",
+  "billing_period_start": "2024-09-01T00:00:00Z",
+  "billing_period_end": "2024-10-01T00:00:00Z",
+  "days_remaining": 28
 }
 ```
+
+---
+
+### Get Usage History
+
+**Endpoint**: `GET /usage/history`
 
 **Query Parameters**:
-- `period`: (optional) "current", "previous", or specific date range
+- `limit` (optional, default 20): Number of events to return
+- `offset` (optional, default 0): Pagination offset
+
+**Response** (200 OK):
+```json
+{
+  "events": [
+    {
+      "type": "api_call",
+      "quantity": 1,
+      "cost_cents": 1,
+      "timestamp": "2024-09-15T10:30:00Z",
+      "idempotency_key": "req-123"
+    }
+  ],
+  "total": 234,
+  "limit": 20,
+  "offset": 0
+}
+```
 
 ---
 
-## Subscription & Billing Endpoints
+## Subscriptions & Billing
 
-### GET /subscription
+### Get Current Subscription
 
-Get current subscription details.
+**Endpoint**: `GET /subscription`
 
 **Response** (200 OK):
+```json
+{
+  "subscription_id": "sub-123",
+  "plan_id": "free",
+  "plan_name": "Free",
+  "status": "active",
+  "stripe_subscription_id": "sub_abc123",
+  "stripe_customer_id": "cus_abc123",
+  "billing_cycle_start": "2024-09-01T00:00:00Z",
+  "billing_cycle_end": "2024-10-01T00:00:00Z"
+}
+```
+
+---
+
+### List Available Plans
+
+**Endpoint**: `GET /plans`
+
+**Response** (200 OK):
+```json
+{
+  "plans": [
+    {
+      "id": "free",
+      "name": "Free",
+      "description": "Starter plan",
+      "api_calls_limit": 1000,
+      "ai_tokens_limit": 100000,
+      "price_cents": 0,
+      "price_display": "$0/month"
+    },
+    {
+      "id": "pro",
+      "name": "Professional",
+      "description": "Professional plan",
+      "api_calls_limit": 100000,
+      "ai_tokens_limit": 10000000,
+      "price_cents": 2999,
+      "price_display": "$29.99/month"
+    }
+  ]
+}
+```
+
+---
+
+### Create Checkout Session
+
+**Endpoint**: `POST /checkout`
+
+**Description**: Create Stripe Checkout session for plan upgrade.
+
+**Request**:
 ```json
 {
   "plan_id": "pro",
-  "plan_name": "Pro",
-  "status": "active",
-  "current_period_start": "2024-01-01T00:00:00Z",
-  "current_period_end": "2024-02-01T00:00:00Z",
-  "renewal_date": "2024-02-01T00:00:00Z",
-  "price_usd": 29.99,
-  "customer_id": "cus_test_123",
-  "stripe_subscription_id": "sub_test_123"
-}
-```
-
----
-
-### GET /plans
-
-List available subscription plans.
-
-**Response** (200 OK):
-```json
-[
-  {
-    "id": "free",
-    "name": "Free",
-    "price_usd": 0,
-    "billing_period": "month",
-    "api_calls_limit": 1000,
-    "ai_tokens_limit": 100000,
-    "features": [
-      "1,000 API calls/month",
-      "100k AI tokens/month",
-      "Email support"
-    ]
-  },
-  {
-    "id": "pro",
-    "name": "Pro",
-    "price_usd": 29.99,
-    "billing_period": "month",
-    "api_calls_limit": 100000,
-    "ai_tokens_limit": 10000000,
-    "features": [
-      "100,000 API calls/month",
-      "10M AI tokens/month",
-      "Priority support",
-      "Custom rate limits"
-    ]
-  }
-]
-```
-
----
-
-### POST /checkout
-
-Create Stripe Checkout session for upgrading plans.
-
-**Request**:
-```json
-{
-  "plan_id": "pro"
+  "success_url": "https://example.com/success",
+  "cancel_url": "https://example.com/cancel"
 }
 ```
 
 **Response** (200 OK):
 ```json
 {
-  "session_id": "cs_test_1234567890",
-  "url": "https://checkout.stripe.com/pay/cs_test_1234567890",
-  "expires_at": "2024-01-15T12:30:00Z"
+  "session_id": "cs_test_12345...",
+  "checkout_url": "https://checkout.stripe.com/pay/cs_test_12345...",
+  "expires_at": "2024-09-16T12:00:00Z"
 }
 ```
 
-**Usage Flow**:
-1. Frontend receives `session_id`
-2. Frontend calls `stripe.redirectToCheckout(sessionId)`
-3. Customer completes payment on Stripe
-4. Stripe triggers webhook: `checkout.session.completed`
-5. Backend updates subscription
-6. Webhook response redirects to success page
-
 ---
 
-## Webhook Endpoints
+## Webhooks
 
-### POST /webhooks/stripe
+### Stripe Webhook Receiver
 
-Receive Stripe webhook events.
+**Endpoint**: `POST /webhooks/stripe`
 
-**Authentication**: Signature verification (not JWT)
-
-**Headers**:
-```
-stripe-signature: t=1234567890,v1=abc123def456...,v0=...
-```
+**Headers Required**:
+- `stripe-signature`: HMAC-SHA256 signature from Stripe
 
 **Events Handled**:
+- `checkout.session.completed` - Checkout finished, create subscription
+- `customer.subscription.updated` - Plan changed, update subscription
+- `customer.subscription.deleted` - Subscription canceled
+- `payment_intent.succeeded` - Payment succeeded
+- `payment_intent.failed` - Payment failed
 
-#### checkout.session.completed
-Fired when customer completes Stripe Checkout.
-
+**Example Webhook Payload**:
 ```json
 {
-  "id": "evt_test_123",
+  "id": "evt_1234567890",
   "type": "checkout.session.completed",
   "data": {
     "object": {
       "id": "cs_test_123",
-      "metadata": {
-        "tenant_id": "550e8400-e29b-41d4-a716-446655440000",
-        "plan_id": "pro"
-      },
-      "customer": "cus_test_123",
-      "subscription": "sub_test_123",
-      "payment_status": "paid"
-    }
-  }
-}
-```
-
-#### customer.subscription.updated
-Fired when subscription changes.
-
-```json
-{
-  "id": "evt_test_456",
-  "type": "customer.subscription.updated",
-  "data": {
-    "object": {
-      "id": "sub_test_123",
-      "metadata": {
-        "tenant_id": "550e8400-e29b-41d4-a716-446655440000"
-      },
-      "status": "active",
-      "current_period_start": 1234567890,
-      "current_period_end": 1267191890
-    }
-  }
-}
-```
-
-#### customer.subscription.deleted
-Fired when subscription canceled.
-
-```json
-{
-  "id": "evt_test_789",
-  "type": "customer.subscription.deleted",
-  "data": {
-    "object": {
-      "id": "sub_test_123",
-      "metadata": {
-        "tenant_id": "550e8400-e29b-41d4-a716-446655440000"
-      },
-      "status": "canceled",
-      "canceled_at": 1234567890
+      "customer": "cus_abc123",
+      "subscription": "sub_abc123"
     }
   }
 }
@@ -350,319 +256,175 @@ Fired when subscription canceled.
 **Response** (200 OK):
 ```json
 {
-  "status": "received",
-  "event_id": "evt_test_123"
+  "received": true,
+  "event_id": "evt_1234567890"
 }
 ```
 
-**Error - Invalid Signature** (400 Bad Request):
-```json
-{
-  "error": "invalid_signature",
-  "message": "Webhook signature verification failed"
-}
-```
-
-**Important Notes**:
-- Signature verification is CRITICAL
-- Same event sent twice? Handled idempotently
-- No JWT needed for webhooks
-- Stripe secret from environment: `STRIPE_WEBHOOK_SECRET`
+**Errors**:
+- `400 Bad Request` - Invalid signature
+- `409 Conflict` - Duplicate event (already processed)
 
 ---
 
-## System Endpoints
+## Health & System
 
-### GET /health
+### Health Check
 
-Health check endpoint.
+**Endpoint**: `GET /health`
 
 **Response** (200 OK):
 ```json
 {
   "status": "healthy",
-  "timestamp": "2024-01-01T12:00:00Z",
-  "version": "1.0.0"
+  "app": "FlyRank Billing Engine",
+  "environment": "production"
 }
 ```
 
 ---
 
-### GET /metrics
+### Readiness Check
 
-Prometheus metrics (for monitoring).
+**Endpoint**: `GET /ready`
 
 **Response** (200 OK):
-```
-# HELP http_requests_total Total HTTP requests
-# TYPE http_requests_total counter
-http_requests_total{method="POST",path="/api/generate"} 1234
-http_requests_total{method="GET",path="/api/usage"} 5678
-
-# HELP http_request_duration_seconds HTTP request duration
-# TYPE http_request_duration_seconds histogram
-http_request_duration_seconds_bucket{path="/api/usage",le="0.1"} 100
-http_request_duration_seconds_bucket{path="/api/usage",le="0.5"} 200
+```json
+{
+  "status": "ready",
+  "app": "FlyRank Billing Engine"
+}
 ```
 
 ---
 
-## Error Handling
+### OpenAPI/Swagger Documentation
 
-### Standard Error Response
+**Endpoint**: `GET /docs`
 
-All errors return consistent format:
+Interactive Swagger UI for exploring the API.
+
+**Endpoint**: `GET /openapi.json`
+
+OpenAPI schema in JSON format.
+
+---
+
+## Error Responses
+
+All errors follow this format:
 
 ```json
 {
-  "error": "error_code",
-  "message": "Human-readable message",
-  "details": {}
+  "status": 400,
+  "detail": "Error message explaining what went wrong",
+  "error_code": "ERROR_CODE"
 }
 ```
 
-### HTTP Status Codes
+### Status Codes
 
-| Code | Meaning | Example |
-|------|---------|---------|
-| 200 | OK | Successful request |
-| 201 | Created | Resource created |
-| 400 | Bad Request | Invalid JSON, malformed signature |
-| 401 | Unauthorized | Invalid/expired JWT token |
-| 402 | Payment Required | Upgrade needed (Free plan quota) |
-| 404 | Not Found | Resource doesn't exist |
-| 429 | Too Many Requests | Quota exceeded (Pro plan) |
-| 500 | Server Error | Unexpected error (see logs) |
+| Code | Meaning |
+|------|---------|
+| `200` | Success |
+| `201` | Created |
+| `204` | No Content |
+| `400` | Bad Request (validation error) |
+| `401` | Unauthorized (missing/invalid token) |
+| `402` | Payment Required (subscription expired) |
+| `403` | Forbidden (not authorized for this resource) |
+| `404` | Not Found |
+| `409` | Conflict (duplicate event/key) |
+| `422` | Unprocessable Entity (validation error) |
+| `429` | Too Many Requests (quota exceeded) |
+| `500` | Internal Server Error |
+| `503` | Service Unavailable |
 
 ---
 
 ## Rate Limiting
 
-**Limits** (per IP, per minute):
-- API endpoints: 10 requests/second (600/minute)
-- Auth endpoints: 5 attempts/minute
-- Webhook endpoint: No limit (signature verified)
+API rate limits apply per-tenant:
 
-**Headers Returned**:
+- **API Endpoints**: 10 requests/second (burst up to 20)
+- **General Routes**: 30 requests/second (burst up to 50)
+
+Rate limit info in response headers:
+
 ```
-X-RateLimit-Limit: 600
-X-RateLimit-Remaining: 592
-X-RateLimit-Reset: 1234567890
+X-RateLimit-Limit: 10
+X-RateLimit-Remaining: 9
+X-RateLimit-Reset: 1694800800
 ```
 
 ---
 
-## Pricing Reference
+## Pagination
 
-### API Calls
-- Rate: $0.01 per 1,000 calls
-- Example: 5,000 calls = $0.05
+List endpoints support pagination:
 
-### AI Tokens
+```
+GET /usage/history?limit=20&offset=0
+```
 
-| Type | Rate | Notes |
-|------|------|-------|
-| Input tokens | $0.0005 / 1k | Fresh tokens from prompt |
-| Cached input tokens | $0.00015 / 1k | Already cached by provider (3x cheaper) |
-| Output tokens | $0.002 / 1k | Tokens in response |
-| Reasoning tokens | $0.002 / 1k | Billed as output tokens |
-
-**Important**: Token categories use different rates and must NOT be summed directly.
-
----
-
-## Code Examples
-
-### Python (Requests)
-
-```python
-import requests
-
-# Login
-response = requests.post(
-    "http://localhost:8000/api/auth/login",
-    json={"email": "test@example.com", "password": "password123"}
-)
-token = response.json()["access_token"]
-tenant_id = response.json()["tenant_id"]
-
-# Headers for all requests
-headers = {
-    "Authorization": f"Bearer {token}",
-    "X-Tenant-ID": tenant_id
+**Response**:
+```json
+{
+  "items": [...],
+  "total": 234,
+  "limit": 20,
+  "offset": 0,
+  "has_next": true
 }
-
-# Generate usage (billable)
-response = requests.post(
-    "http://localhost:8000/api/generate",
-    json={
-        "prompt": "Hello",
-        "idempotency_key": "req_unique_123"
-    },
-    headers=headers
-)
-result = response.json()
-print(f"Cost: ${result['cost']}")
-
-# Get usage
-response = requests.get(
-    "http://localhost:8000/api/usage",
-    headers=headers
-)
-usage = response.json()
-print(f"Usage: {usage['api_calls_used']} / {usage['api_calls_limit']}")
-```
-
-### JavaScript (Axios)
-
-```javascript
-import axios from 'axios'
-
-const api = axios.create({
-  baseURL: 'http://localhost:8000/api'
-})
-
-// Login
-const { data } = await api.post('/auth/login', {
-  email: 'test@example.com',
-  password: 'password123'
-})
-const { access_token, tenant_id } = data
-
-// Set auth headers
-api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
-api.defaults.headers.common['X-Tenant-ID'] = tenant_id
-
-// Generate usage
-const response = await api.post('/generate', {
-  prompt: 'Hello',
-  idempotency_key: 'req_unique_123'
-})
-console.log(`Cost: $${response.data.cost}`)
-
-// Get usage
-const usage = await api.get('/usage')
-console.log(`Usage: ${usage.data.api_calls_used} / ${usage.data.api_calls_limit}`)
-```
-
-### cURL
-
-```bash
-# Login
-curl -X POST http://localhost:8000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "test@example.com",
-    "password": "password123"
-  }'
-
-# Get token from response, then use in requests
-
-TOKEN="eyJhbGciOiJIUzI1NiIs..."
-TENANT_ID="550e8400-e29b-41d4-a716-446655440000"
-
-# Generate usage
-curl -X POST http://localhost:8000/api/generate \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "X-Tenant-ID: $TENANT_ID" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Hello",
-    "idempotency_key": "req_unique_123"
-  }'
-
-# Get usage
-curl -X GET http://localhost:8000/api/usage \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "X-Tenant-ID: $TENANT_ID"
 ```
 
 ---
 
-## Stripe Test Mode
+## Sorting
 
-### Test Cards
+List endpoints support sorting:
 
-| Card Number | Behavior |
-|---|---|
-| 4242 4242 4242 4242 | Succeeds |
-| 5555 5555 5555 4444 | Succeeds (Mastercard) |
-| 4000 0000 0000 0002 | Declined |
-| 3782 822463 10005 | 3D Secure required |
+```
+GET /usage/history?sort=-timestamp
+```
 
-**Expiry**: Any future date
-**CVC**: Any 3-4 digits
+**Parameters**:
+- Prefix with `-` for descending order
+- Default: ascending
 
-### Triggering Test Webhooks
+---
 
-```bash
-# Install Stripe CLI
-brew install stripe/stripe-cli/stripe
+## Filtering
 
-# Authenticate
-stripe login
+Usage history can be filtered:
 
-# Forward webhooks to localhost
-stripe listen --forward-to localhost:8000/api/webhooks/stripe
-
-# In another terminal, trigger events
-stripe trigger checkout.session.completed
-stripe trigger customer.subscription.updated
-stripe trigger customer.subscription.deleted
+```
+GET /usage/history?type=api_call&date_from=2024-09-01&date_to=2024-09-30
 ```
 
 ---
 
-## Monitoring & Debugging
+## Best Practices
 
-### Enable Debug Logging
-
-```bash
-export LOG_LEVEL=debug
-docker-compose restart backend
-```
-
-### View Logs
-
-```bash
-# Backend logs
-docker-compose logs -f backend
-
-# Database logs
-docker-compose logs -f postgres
-
-# All logs
-docker-compose logs -f
-```
-
-### Common Issues
-
-**401 Unauthorized**
-- Token expired or invalid
-- Solution: Re-login to get new token
-
-**429 Too Many Requests**
-- Rate limit exceeded
-- Wait for reset before retrying
-
-**402 Payment Required**
-- Free plan quota exceeded
-- Solution: Upgrade to Pro plan
-
-**400 Bad Request (Webhook)**
-- Invalid Stripe signature
-- Check webhook secret in .env
+1. **Always include `idempotency_key`** on POST requests to handle retries safely
+2. **Cache API responses** for frequently accessed data (usage, plans)
+3. **Handle 429 responses** with exponential backoff
+4. **Verify webhook signatures** using `stripe-signature` header
+5. **Use pagination** for large result sets
+6. **Monitor rate limit** headers to avoid being throttled
 
 ---
 
-## API Versioning
+## SDK Availability
 
-Current API version: **v1** (in URL path)
-
-Future changes will be backward compatible or versioned as `/api/v2/`.
+- **Python**: `pip install flyrank-client`
+- **Node.js**: `npm install @flyrank/client`
+- **Go**: `go get github.com/flyrank/client-go`
 
 ---
 
-**Last Updated**: 2024
-**API Version**: 1.0
-**Status**: Production Ready
+## Support
+
+- **API Status**: https://status.flyrank.io
+- **Docs**: https://docs.flyrank.io
+- **Issues**: https://github.com/flyrank/issues
