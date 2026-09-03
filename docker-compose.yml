@@ -22,8 +22,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile.backend
     container_name: flyrank_backend
     environment:
       DATABASE_URL: postgresql://flyrank_user:${POSTGRES_PASSWORD:-postgres_password}@postgres:5432/flyrank_billing
@@ -39,8 +39,9 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+    working_dir: /app
     command: >
-      sh -c "alembic upgrade head &&
+      sh -c "cd /app && alembic upgrade head &&
              python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     networks:
       - flyrank_network
