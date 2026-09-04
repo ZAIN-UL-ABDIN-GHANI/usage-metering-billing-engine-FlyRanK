@@ -96,38 +96,34 @@ async def test_different_idempotency_keys_create_separate_events(db: Session, cl
 
 
 @pytest.mark.asyncio
-async def test_idempotency_key_unique_constraint():
+async def test_idempotency_key_unique_constraint(db: Session):
     """Test that database enforces uniqueness on (tenant_id, idempotency_key)."""
     from sqlalchemy.exc import IntegrityError
 
-    db = Session()
-    try:
-        tenant = Tenant(id="tenant-3", name="Test", email="test3@example.com")
-        db.add(tenant)
-        db.commit()
+    tenant = Tenant(id="tenant-3", name="Test", email="test3@example.com")
+    db.add(tenant)
+    db.commit()
 
-        # Insert first usage event
-        event1 = UsageEvent(
-            tenant_id="tenant-3",
-            type="api_call",
-            quantity=1,
-            cost_cents=1,
-            idempotency_key="dup-key",
-        )
-        db.add(event1)
-        db.commit()
+    # Insert first usage event
+    event1 = UsageEvent(
+        tenant_id="tenant-3",
+        usage_type="api_calls",
+        quantity=1,
+        cost_cents=1,
+        idempotency_key="dup-key",
+    )
+    db.add(event1)
+    db.commit()
 
-        # Try to insert duplicate idempotency key
-        event2 = UsageEvent(
-            tenant_id="tenant-3",
-            type="api_call",
-            quantity=1,
-            cost_cents=1,
-            idempotency_key="dup-key",
-        )
-        db.add(event2)
-        
-        with pytest.raises(IntegrityError):
-            db.commit()
-    finally:
-        db.close()
+    # Try to insert duplicate idempotency key
+    event2 = UsageEvent(
+        tenant_id="tenant-3",
+        usage_type="api_calls",
+        quantity=1,
+        cost_cents=1,
+        idempotency_key="dup-key",
+    )
+    db.add(event2)
+
+    with pytest.raises(IntegrityError):
+        db.commit()
