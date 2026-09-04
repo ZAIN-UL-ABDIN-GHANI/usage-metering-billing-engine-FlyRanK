@@ -6,7 +6,7 @@ import enum
 
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Float, Enum as SQLEnum
 from sqlalchemy.orm import relationship
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.database import Base
 
@@ -114,8 +114,7 @@ class ProratedAdjustmentResponse(BaseModel):
     applied: Optional[datetime]
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PlanChangeRequest(BaseModel):
