@@ -149,6 +149,8 @@ for r in [
     stripe.router,
     tenants.router,
     usage.router,
+    usage.generate_router,
+    stripe.webhook_router,
 ]:
     app.include_router(r, prefix="/api")
 
