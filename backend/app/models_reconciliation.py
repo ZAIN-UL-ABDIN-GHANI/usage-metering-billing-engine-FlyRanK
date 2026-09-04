@@ -4,7 +4,7 @@ import enum
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import (
     Boolean,
     Column,
@@ -162,8 +162,7 @@ class ReconciliationIssueResponse(BaseModel):
     created_at: datetime
     resolved_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReconciliationRunResponse(BaseModel):
@@ -181,8 +180,7 @@ class ReconciliationRunResponse(BaseModel):
     error_message: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReconciliationRunDetailResponse(BaseModel):
@@ -192,8 +190,7 @@ class ReconciliationRunDetailResponse(BaseModel):
     issues: List[ReconciliationIssueResponse]
     unresolved_count: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ManualReconciliationRequest(BaseModel):
