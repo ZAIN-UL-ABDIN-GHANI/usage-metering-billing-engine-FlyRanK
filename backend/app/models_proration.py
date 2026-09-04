@@ -1,10 +1,12 @@
 """Proration model and schemas for mid-cycle billing adjustments."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
+import enum
+
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Float, Enum as SQLEnum
 from sqlalchemy.orm import relationship
-import enum
+from pydantic import BaseModel, Field
 
 from app.database import Base
 
@@ -25,16 +27,16 @@ class ProratedAdjustment(Base):
     # Primary key
     id = Column(String(50), primary_key=True)
     
-    # Relationships
-    tenant_id = Column(String(50), ForeignKey("tenant.id"), nullable=False, index=True)
+    # Relationships - updated foreign key targets to match plural table names
+    tenant_id = Column(String(50), ForeignKey("tenants.id"), nullable=False, index=True)
     tenant = relationship("Tenant")
     
-    subscription_id = Column(String(50), ForeignKey("subscription.id"), nullable=False, index=True)
+    subscription_id = Column(String(50), ForeignKey("subscriptions.id"), nullable=False, index=True)
     subscription = relationship("Subscription")
     
     # Plan details
-    from_plan_id = Column(String(50), ForeignKey("plan.id"), nullable=False)
-    to_plan_id = Column(String(50), ForeignKey("plan.id"), nullable=False)
+    from_plan_id = Column(String(50), ForeignKey("plans.id"), nullable=False)
+    to_plan_id = Column(String(50), ForeignKey("plans.id"), nullable=False)
     from_plan = relationship("Plan", foreign_keys=[from_plan_id])
     to_plan = relationship("Plan", foreign_keys=[to_plan_id])
     
@@ -72,7 +74,7 @@ class ProratedAdjustment(Base):
     net_adjustment_cents = Column(Integer, nullable=False)  # Net (credit is negative, charge is positive)
     
     # Status
-    applied = Column(datetime, nullable=True)  # When applied to account
+    applied = Column(DateTime, nullable=True)  # When applied to account
     
     # Metadata
     notes = Column(String(500), nullable=True)
@@ -85,10 +87,6 @@ class ProratedAdjustment(Base):
 
 
 # Pydantic schemas for API
-
-from pydantic import BaseModel, Field
-from typing import List
-
 
 class ProratedAdjustmentResponse(BaseModel):
     """Prorated adjustment response schema."""
@@ -151,4 +149,3 @@ class ProratedAdjustmentListResponse(BaseModel):
     total_count: int
     page: int
     page_size: int
-    total_pages: int
