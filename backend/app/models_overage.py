@@ -93,7 +93,7 @@ class OveragePolicy(Base):
 
 # Pydantic schemas for API
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class OverageChargeResponse(BaseModel):
@@ -112,8 +112,7 @@ class OverageChargeResponse(BaseModel):
     detected_at: datetime
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OveragePolicyResponse(BaseModel):
@@ -130,8 +129,7 @@ class OveragePolicyResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OveragePolicyUpdate(BaseModel):
