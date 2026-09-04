@@ -15,6 +15,7 @@ router = APIRouter(
     prefix="/stripe",
     tags=["stripe"],
 )
+webhook_router = APIRouter(tags=["stripe"])
 
 
 @router.post("/checkout", status_code=status.HTTP_201_CREATED)
@@ -177,10 +178,20 @@ async def handle_stripe_webhook(
         }
 
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
+        return {
+            "received": True,
+            "event_id": event_id,
+            "event_type": event_type,
+            "message": str(e),
+        }
+
+
+webhook_router.add_api_route(
+    "/webhooks/stripe",
+    handle_stripe_webhook,
+    methods=["POST"],
+    status_code=status.HTTP_200_OK,
+)
 
 
 @router.get("/subscription")
