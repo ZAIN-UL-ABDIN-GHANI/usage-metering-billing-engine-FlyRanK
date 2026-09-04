@@ -4,7 +4,7 @@ import enum
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import (
     Boolean,
     Column,
@@ -147,8 +147,7 @@ class UsageAnalyticsResponse(BaseModel):
     trend: str  # "up", "down", "flat"
     trend_percent: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RevenueAnalyticsResponse(BaseModel):
@@ -229,8 +228,7 @@ class SavedReportResponse(BaseModel):
     next_generation_at: Optional[datetime]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ReportRunResponse(BaseModel):
