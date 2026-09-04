@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta
 from decimal import Decimal
+import uuid
 
 from sqlalchemy import (
     Column,
@@ -15,7 +16,7 @@ from sqlalchemy import (
     Index,
     Text,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, synonym
 
 from app.database import Base
 
@@ -69,7 +70,7 @@ class Subscription(Base):
 
     __tablename__ = "subscriptions"
 
-    id = Column(String(36), primary_key=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = Column(String(36), ForeignKey("tenants.id"), nullable=False, index=True)
     stripe_subscription_id = Column(String(255), unique=True, nullable=True)
     plan_id = Column(String(36), ForeignKey("plans.id"), nullable=False)
@@ -78,8 +79,9 @@ class Subscription(Base):
         default="active",
         nullable=False,
     )  # active, past_due, canceled, trialing
-    current_period_start = Column(DateTime, nullable=False)
-    current_period_end = Column(DateTime, nullable=False)
+    stripe_customer_id = Column(String(255), nullable=True)
+    current_period_start = Column(DateTime, default=datetime.utcnow, nullable=False)
+    current_period_end = Column(DateTime, default=lambda: datetime.utcnow() + timedelta(days=30), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -92,13 +94,14 @@ class UsageEvent(Base):
 
     __tablename__ = "usage_events"
 
-    id = Column(String(36), primary_key=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     tenant_id = Column(String(36), ForeignKey("tenants.id"), nullable=False, index=True)
     usage_type = Column(String(50), nullable=False, index=True)  # api_calls, ai_tokens
+    type = synonym("usage_type")
     quantity = Column(Integer, nullable=False)  # Exact integer count
     idempotency_key = Column(String(255), nullable=False, index=True)
     cost_cents = Column(Integer, nullable=True)  # In cents, calculated later
-    billing_period = Column(String(7), nullable=False, index=True)  # YYYY-MM format
+    billing_period = Column(String(7), default=lambda: datetime.utcnow().strftime("%Y-%m"), nullable=False, index=True)  # YYYY-MM format
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships
@@ -114,12 +117,17 @@ class WebhookEvent(Base):
 
     __tablename__ = "webhook_events"
 
-    id = Column(String(36), primary_key=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     stripe_event_id = Column(String(255), unique=True, nullable=False)
+    event_id = synonym("stripe_event_id")
     event_type = Column(String(100), nullable=False, index=True)
     tenant_id = Column(String(36), ForeignKey("tenants.id"), nullable=True, index=True)
     processed = Column(Boolean, default=False, nullable=False)
-    payload = Column(Text, nullable=False)  # JSON string
+    payload = Column(Text, default="{}", nullable=False)  # JSON string
+    event_data = synonym("payload")
+    status = Column(String(50), default="processing", nullable=False)
+    error = Column(Text, nullable=True)
+    subscription_id = Column(String(36), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     processed_at = Column(DateTime, nullable=True)
 
