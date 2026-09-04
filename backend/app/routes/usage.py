@@ -1,11 +1,12 @@
 
-from fastapi import APIRouter, Depends, HTTPException, status, Header
+from fastapi import APIRouter, Depends, HTTPException, Response, status, Header
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.database import get_db
 from app.dependencies import get_current_tenant
 from app.models import Tenant
+from app.models import Plan
 from app.services.usage_service import UsageService
 from pydantic import BaseModel, Field
 from typing import Optional
@@ -17,10 +18,53 @@ class UsageRecordRequest(BaseModel):
     quantity: int = Field(..., gt=0)
     cost_cents: Optional[int] = None
 
+
+class GenerateRequest(BaseModel):
+    prompt: str
+    idempotency_key: str
+
 router = APIRouter(
     prefix="/usage",
     tags=["usage"],
 )
+generate_router = APIRouter(tags=["usage"])
+
+
+@generate_router.post("/generate")
+async def generate(
+    request: GenerateRequest,
+    response: Response,
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+):
+    """Compatibility endpoint for metered generation requests."""
+    service = UsageService(db)
+    subscription = current_tenant.subscriptions[0] if current_tenant.subscriptions else None
+    if subscription and subscription.status in ("past_due", "canceled"):
+        raise HTTPException(status_code=402, detail="Payment required or upgrade plan")
+
+    if db.query(Plan).filter_by(id=current_tenant.plan_id).first():
+        quota = service.check_quota(current_tenant.id, "api_calls", 1)
+        if not quota["allowed"]:
+            raise HTTPException(
+                status_code=429,
+                detail="Usage limit exceeded",
+                headers={"Retry-After": "3600"},
+            )
+
+    event, _ = service.record_usage(
+        tenant_id=current_tenant.id,
+        usage_type="api_calls",
+        quantity=1,
+        idempotency_key=request.idempotency_key,
+        cost_cents=1,
+    )
+    return {
+        "id": event.id,
+        "prompt": request.prompt,
+        "usage_event_id": event.id,
+        "cost_cents": event.cost_cents,
+    }
 
 
 @router.post("/record", status_code=status.HTTP_201_CREATED)
@@ -194,13 +238,27 @@ async def get_usage_summary(
     service = UsageService(db)
 
     try:
-        return service.get_usage_summary(current_tenant.id)
+        summary = service.get_usage_summary(current_tenant.id)
+        summary["total_cost_cents"] = summary["cost"]["total_cents"]
+        summary["current_cost"] = summary["cost"]["total_cents"]
+        return summary
 
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e),
         )
+
+
+@router.get("")
+async def get_usage_summary_compat(
+    current_tenant: Tenant = Depends(get_current_tenant),
+    db: Session = Depends(get_db),
+):
+    summary = UsageService(db).get_usage_summary(current_tenant.id)
+    summary["total_cost_cents"] = summary["cost"]["total_cents"]
+    summary["current_cost"] = summary["cost"]["total_cents"]
+    return summary
 
 
 @router.get("/events")
