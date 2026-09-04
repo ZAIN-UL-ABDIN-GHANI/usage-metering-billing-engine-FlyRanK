@@ -1,7 +1,7 @@
 """Invoice model and schemas for billing statements."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Text, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 import enum
@@ -28,8 +28,12 @@ class Invoice(Base):
     id = Column(String(50), primary_key=True)
     
     # Relationships
-    tenant_id = Column(String(50), ForeignKey("tenant.id"), nullable=False, index=True)
+    # ✅ FIX 1: Point to 'tenants.id' (plural) to match Tenant.__tablename__
+    tenant_id = Column(String(50), ForeignKey("tenants.id"), nullable=False, index=True)
     tenant = relationship("Tenant", back_populates="invoices")
+    
+    # ✅ FIX 2: Added relationship to link line items back to the parent invoice
+    line_items = relationship("InvoiceLineItem", back_populates="invoice", cascade="all, delete-orphan")
     
     # Invoice details
     billing_period = Column(String(7), nullable=False)  # YYYY-MM format
@@ -79,7 +83,8 @@ class InvoiceLineItem(Base):
     
     # Relationships
     invoice_id = Column(String(50), ForeignKey("invoices.id"), nullable=False, index=True)
-    invoice = relationship("Invoice")
+    # ✅ FIX 3: Added back_populates="line_items"
+    invoice = relationship("Invoice", back_populates="line_items")
     
     # Line item details
     description = Column(String(500), nullable=False)  # e.g., "API Calls - January 2024"
@@ -108,7 +113,7 @@ class InvoiceLineItem(Base):
 # Add relationship to Tenant model
 def add_invoice_relationship_to_tenant():
     """Add invoices relationship to Tenant model (called during migration)."""
-    if not hasattr(Base.metadata.tables.get('tenant'), 'invoices'):
+    if not hasattr(Base.metadata.tables.get('tenants'), 'invoices'):
         # Relationship will be added when models are loaded
         pass
 
@@ -116,7 +121,6 @@ def add_invoice_relationship_to_tenant():
 # Pydantic schemas for API
 
 from pydantic import BaseModel, Field
-from typing import List
 
 
 class InvoiceLineItemResponse(BaseModel):
