@@ -20,8 +20,8 @@ async def test_quota_enforcement_at_boundary(db: Session, client: TestClient):
     db.add_all([tenant, plan, subscription])
     db.commit()
 
-    # Create 999 usage events (just under limit)
-    for i in range(999):
+    # Create 998 usage events so the next two requests reach the limit.
+    for i in range(998):
         event = UsageEvent(
             tenant_id="tenant-quota-1",
             type="api_call",
