@@ -11,6 +11,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from app.database import Base
 from app.main import app
 from app.dependencies import get_db
+from app.database import get_db as database_get_db
 
 # Use in-memory SQLite for tests
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
@@ -42,6 +43,7 @@ def db() -> Generator[Session, None, None]:
 def client(db: Session) -> TestClient:
     """Create a test client with overridden database."""
     app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[database_get_db] = lambda: db
     return TestClient(app)
 
 
