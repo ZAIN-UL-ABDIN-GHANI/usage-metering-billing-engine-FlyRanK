@@ -26,10 +26,10 @@ class OverageCharge(Base):
     id = Column(String(50), primary_key=True)
     
     # Relationships
-    tenant_id = Column(String(50), ForeignKey("tenant.id"), nullable=False, index=True)
+    tenant_id = Column(String(50), ForeignKey("tenants.id"), nullable=False, index=True)
     tenant = relationship("Tenant")
     
-    subscription_id = Column(String(50), ForeignKey("subscription.id"), nullable=False, index=True)
+    subscription_id = Column(String(50), ForeignKey("subscriptions.id"), nullable=False, index=True)
     subscription = relationship("Subscription")
     
     # Billing period
@@ -47,7 +47,7 @@ class OverageCharge(Base):
     
     # Status
     invoiced = Column(Boolean, nullable=False, default=False)
-    invoice_id = Column(String(50), ForeignKey("invoice.id"), nullable=True)
+    invoice_id = Column(String(50), ForeignKey("invoices.id"), nullable=True)
     
     # Timestamps
     detected_at = Column(DateTime, nullable=False)  # When overage was detected
@@ -66,7 +66,7 @@ class OveragePolicy(Base):
     id = Column(String(50), primary_key=True)
     
     # Relationships
-    plan_id = Column(String(50), ForeignKey("plan.id"), nullable=False, unique=True, index=True)
+    plan_id = Column(String(50), ForeignKey("plans.id"), nullable=False, unique=True, index=True)
     plan = relationship("Plan")
     
     # Overage settings
