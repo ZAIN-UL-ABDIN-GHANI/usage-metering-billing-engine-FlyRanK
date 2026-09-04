@@ -289,7 +289,7 @@ async def get_dashboard(
 @router.get("/trends/{metric}", status_code=status.HTTP_200_OK)
 async def get_trend_data(
     metric: str,
-    period_type: str = Query("daily", regex="^(daily|weekly|monthly)$"),
+    period_type: str = Query("daily", pattern="^(daily|weekly|monthly)$"),
     num_periods: int = Query(30, ge=7, le=365),
     current_tenant: Tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db),
