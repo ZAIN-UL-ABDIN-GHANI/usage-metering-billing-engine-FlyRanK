@@ -115,12 +115,13 @@ class UsageRepository:
         Returns:
             Total quantity used
         """
+        usage_types = ("api_calls", "api_call") if usage_type == "api_calls" else (usage_type,)
         result = (
             self.db.query(UsageEvent)
-            .filter_by(
-                tenant_id=tenant_id,
-                usage_type=usage_type,
-                billing_period=billing_period,
+            .filter(
+                UsageEvent.tenant_id == tenant_id,
+                UsageEvent.usage_type.in_(usage_types),
+                UsageEvent.billing_period == billing_period,
             )
             .all()
         )
