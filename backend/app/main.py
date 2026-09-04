@@ -12,6 +12,9 @@ from app.config import settings
 from app.database import create_all_tables
 from app.schemas import ErrorResponse, ValidationError
 
+# ✅ FIX: Explicitly import models so Base.metadata populates before create_all_tables()
+import app.models  # noqa: F401
+
 # Configure logging
 logging.basicConfig(
     level=settings.log_level,
@@ -123,6 +126,33 @@ async def root():
     }
 
 
+# Include Routers
+from app.routes import (  # noqa: E402
+    alerts,
+    invoices,
+    overages,
+    plan_changes,
+    reconciliation,
+    reporting,
+    stripe,
+    tenants,
+    usage,
+)
+
+for r in [
+    alerts.router,
+    invoices.router,
+    overages.router,
+    plan_changes.router,
+    reconciliation.router,
+    reporting.router,
+    stripe.router,
+    tenants.router,
+    usage.router,
+]:
+    app.include_router(r, prefix="/api")
+
+
 if __name__ == "__main__":
     import uvicorn
 
@@ -133,7 +163,3 @@ if __name__ == "__main__":
         reload=settings.debug,
         workers=1 if settings.debug else settings.workers,
     )
-
-from app.routes import alerts, invoices, overages, plan_changes, reconciliation, reporting, stripe, tenants, usage
-
-for r in [alerts.router, invoices.router, overages.router, plan_changes.router, reconciliation.router, reporting.router, stripe.router, tenants.router, usage.router]: app.include_router(r, prefix="/api")
