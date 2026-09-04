@@ -34,8 +34,8 @@ class Alert(Base):
     # Primary key
     id = Column(String(50), primary_key=True)
     
-    # Relationships
-    tenant_id = Column(String(50), ForeignKey("tenant.id"), nullable=False, index=True)
+    # Relationships (FIXED: tenants.id instead of tenant.id)
+    tenant_id = Column(String(50), ForeignKey("tenants.id"), nullable=False, index=True)
     tenant = relationship("Tenant", back_populates="alerts")
     
     # Alert details
@@ -85,8 +85,8 @@ class AlertPreference(Base):
     # Primary key
     id = Column(String(50), primary_key=True)
     
-    # Relationships
-    tenant_id = Column(String(50), ForeignKey("tenant.id"), nullable=False, unique=True, index=True)
+    # Relationships (FIXED: tenants.id instead of tenant.id)
+    tenant_id = Column(String(50), ForeignKey("tenants.id"), nullable=False, unique=True, index=True)
     tenant = relationship("Tenant", back_populates="alert_preferences")
     
     # Notification settings
