@@ -22,7 +22,7 @@ class StripeService:
         """Initialize service with database session."""
         self.db = db
         self.tenant_repo = TenantRepository(db)
-        self.stripe_api_key = settings.stripe_secret_key
+        self.stripe_api_key = settings.stripe_api_key
         self.webhook_secret = settings.stripe_webhook_secret
 
     def create_checkout_session(
