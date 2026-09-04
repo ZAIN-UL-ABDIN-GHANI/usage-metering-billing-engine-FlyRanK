@@ -8,12 +8,13 @@ from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 
 from app.models import Tenant, Plan, Subscription, WebhookEvent
+from app.config import settings
 
 
 @pytest.mark.asyncio
 async def test_webhook_signature_verification(client: TestClient):
     """Test that webhook signature verification works."""
-    webhook_secret = "whsec_test_secret"
+    webhook_secret = settings.stripe_webhook_secret
     
     # Create payload
     payload = {
@@ -43,7 +44,7 @@ async def test_webhook_signature_verification(client: TestClient):
     # Send webhook with valid signature
     response = client.post(
         "/api/webhooks/stripe",
-        json=payload,
+        content=payload_str,
         headers={"stripe-signature": stripe_signature},
     )
     
