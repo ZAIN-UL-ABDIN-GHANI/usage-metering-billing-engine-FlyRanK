@@ -120,7 +120,7 @@ def add_invoice_relationship_to_tenant():
 
 # Pydantic schemas for API
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class InvoiceLineItemResponse(BaseModel):
@@ -136,8 +136,7 @@ class InvoiceLineItemResponse(BaseModel):
     tax_cents: int
     total_cents: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InvoiceResponse(BaseModel):
@@ -167,8 +166,7 @@ class InvoiceResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InvoiceDetailedResponse(InvoiceResponse):
