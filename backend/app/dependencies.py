@@ -10,6 +10,8 @@ from app.models import Tenant
 
 async def get_tenant_from_api_key(
     x_api_key: Optional[str] = Header(None),
+    x_tenant_id: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db),
 ) -> Tenant:
     """
@@ -25,7 +27,11 @@ async def get_tenant_from_api_key(
     Raises:
         HTTPException 401: If API key missing or invalid
     """
-    if not x_api_key:
+    api_key = x_api_key or x_tenant_id
+    if not api_key and authorization and authorization.lower().startswith("bearer "):
+        api_key = authorization[7:]
+
+    if not api_key:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing API key",
@@ -36,7 +42,7 @@ async def get_tenant_from_api_key(
     # For now, we use tenant ID as API key (demo only)
     # In Module 5+, implement proper API key management
     
-    tenant = db.query(Tenant).filter_by(id=x_api_key).first()
+    tenant = db.query(Tenant).filter_by(id=api_key).first()
     
     if not tenant:
         raise HTTPException(
