@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.database import get_db
-from app.dependencies import get_current_tenant
-from app.models import Tenant
+from app.dependencies import get_current_tenant, get_current_user
+from app.models import Tenant, User
 from app.models import Plan
 from app.services.usage_service import UsageService
 from pydantic import BaseModel, Field
@@ -252,9 +252,13 @@ async def get_usage_summary(
 
 @router.get("")
 async def get_usage_summary_compat(
-    current_tenant: Tenant = Depends(get_current_tenant),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    current_tenant = db.query(Tenant).filter_by(id=current_user.tenant_id).first()
+    if not current_tenant or current_tenant.status != "active":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid tenant")
+
     summary = UsageService(db).get_usage_summary(current_tenant.id)
     summary["total_cost_cents"] = summary["cost"]["total_cents"]
     summary["current_cost"] = summary["cost"]["total_cents"]
