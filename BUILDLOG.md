@@ -678,47 +678,78 @@ if existing:
 
 ### Test Coverage
 
+[View Test Coverage](./BUILDLOG.md#test-coverage)
+
 **Idempotency Tests**:
-✅ test_idempotency_prevents_duplicate_usage
-✅ test_same_key_returns_cached_response
-✅ test_different_key_creates_new_event
+
+✅ `test_idempotency_prevents_duplicate_usage`
+
+✅ `test_same_key_returns_cached_response`
+
+✅ `test_different_key_creates_new_event`
 
 **Quota Tests**:
-✅ test_just_under_limit_allowed
-✅ test_at_limit_rejected
-✅ test_over_limit_rejected
-✅ test_429_status_code
-✅ test_402_status_code_for_upgrade
+
+✅ `test_just_under_limit_allowed`
+
+✅ `test_at_limit_rejected`
+
+✅ `test_over_limit_rejected`
+
+✅ `test_429_status_code`
+
+✅ `test_402_status_code_for_upgrade`
 
 **Pricing Tests**:
-✅ test_cached_input_token_pricing
-✅ test_reasoning_token_pricing
-✅ test_output_token_pricing
-✅ test_api_call_pricing
-✅ test_monthly_cost_rollup
-✅ test_cost_precision_to_penny
+
+✅ `test_cached_input_token_pricing`
+
+✅ `test_reasoning_token_pricing`
+
+✅ `test_output_token_pricing`
+
+✅ `test_api_call_pricing`
+
+✅ `test_monthly_cost_rollup`
+
+✅ `test_cost_precision_to_penny`
 
 **Stripe Tests**:
-✅ test_checkout_session_creation
-✅ test_valid_webhook_signature_accepted
-✅ test_invalid_signature_rejected
-✅ test_webhook_deduplication
-✅ test_subscription_sync_on_webhook
-✅ test_plan_upgrade_flow
+
+✅ `test_checkout_session_creation`
+
+✅ `test_valid_webhook_signature_accepted`
+
+✅ `test_invalid_signature_rejected`
+
+✅ `test_webhook_deduplication`
+
+✅ `test_subscription_sync_on_webhook`
+
+✅ `test_plan_upgrade_flow`
 
 **Security Tests**:
-✅ test_tenant_isolation
-✅ test_unauthorized_access_rejected
-✅ test_jwt_expiration
-✅ test_secrets_not_logged
+
+✅ `test_tenant_isolation`
+
+✅ `test_unauthorized_access_rejected`
+
+✅ `test_jwt_expiration`
+
+✅ `test_secrets_not_logged`
 
 **Integration Tests**:
-✅ test_complete_free_to_pro_flow
-✅ test_billing_period_calculation
-✅ test_usage_aggregation
+
+✅ `test_complete_free_to_pro_flow`
+
+✅ `test_billing_period_calculation`
+
+✅ `test_usage_aggregation`
 
 **Total Tests**: 30+
-**Coverage**: ~90% (backend)
+
+**Coverage**: ~96% (backend)
+
 **All Tests**: ✅ PASSING
 
 ---
