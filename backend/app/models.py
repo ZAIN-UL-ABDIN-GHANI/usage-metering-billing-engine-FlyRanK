@@ -44,6 +44,19 @@ class Tenant(Base):
     alert_preferences = relationship("AlertPreference", back_populates="tenant", uselist=False, cascade="all, delete-orphan")
 
 
+class User(Base):
+    """User credentials used to authenticate a tenant dashboard session."""
+
+    __tablename__ = "users"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = Column(String(36), ForeignKey("tenants.id"), nullable=False, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 class Plan(Base):
     """Plan model representing subscription tiers."""
 
@@ -134,3 +147,8 @@ class WebhookEvent(Base):
 
 # Re-export models defined in secondary model modules
 from app.models_invoice import Invoice, InvoiceLineItem  # noqa: F401
+from app.models_alert import Alert, AlertPreference  # noqa: F401
+from app.models_overage import OverageCharge, OveragePolicy  # noqa: F401
+from app.models_proration import ProratedAdjustment  # noqa: F401
+from app.models_reconciliation import ReconciliationRun, ReconciliationIssue  # noqa: F401
+from app.models_reporting import SavedReport, ReportRun  # noqa: F401
