@@ -883,37 +883,89 @@ if existing:
 
 ## TIME BREAKDOWN
 
-### Total Development Time: ~40 focused hours
+### Total Development Time: ~90 focused hours
 
-The project calendar ran from **10 August 2026 through 5 September 2026**.
-The 27-day calendar period should not be interpreted as 27 full working days.
-Development was self-paced, with implementation, testing, review, and documentation
-performed at different points during the period.
+The project was developed from **10 August 2026 through 5 September 2026**.
+This represents a **27-day calendar period** of self-paced development, including
+implementation, testing, debugging, integration, review, documentation, and
+final deployment preparation.
 
-**Calendar period**:
-- Start: 10 August 2026
-- End: 5 September 2026
-- Elapsed calendar period: 27 days
-- Focused implementation time: approximately 40 hours
+The total focused development effort across all **13 modules** was approximately
+**90 hours**, covering the complete full-stack billing engine from foundation
+through production-ready integration.
+
+**Calendar Period**:
+
+- **Start**: 10 August 2026
+- **End**: 5 September 2026
+- **Elapsed Calendar Period**: 27 days
+- **Total Focused Development Time**: ~90 hours
+- **Total Modules Completed**: 13
+- **Development Model**: Self-paced implementation
 
 **Module Breakdown**:
-- Modules 1-4: ~6 hours
-- Modules 5-8: ~8 hours
-- Modules 9-10: ~6 hours
-- Modules 11-12: ~8 hours
-- Module 13: ~12 hours
 
-**By Category**:
-- Backend Development: ~20 hours
-- Frontend Development: ~12 hours
-- Infrastructure/DevOps: ~5 hours
-- Testing & Verification: ~3 hours
+- **Module 1 — Project Foundation & Configuration**: ~6 hours
+- **Module 2 — PostgreSQL Database & Migrations**: ~6 hours
+- **Module 3 — Authentication & Tenant Management**: ~7 hours
+- **Module 4 — Plans & Subscriptions**: ~5 hours
+- **Module 5 — Usage Metering**: ~8 hours
+- **Module 6 — Idempotency**: ~6 hours
+- **Module 7 — Quota Enforcement**: ~6 hours
+- **Module 8 — Cost Calculation**: ~7 hours
+- **Module 9 — Billable FastAPI Endpoint**: ~7 hours
+- **Module 10 — Usage & Cost API**: ~5 hours
+- **Module 11 — Stripe Checkout**: ~7 hours
+- **Module 12 — Stripe Webhooks**: ~7 hours
+- **Module 13 — Full-Stack Frontend & Production Orchestration**: ~13 hours
+
+**Total**: **~90 hours**
+
+**By Development Area**:
+
+- **Backend Development**: ~43 hours
+- **Database & Data Architecture**: ~10 hours
+- **Frontend Development**: ~13 hours
+- **Stripe & Payment Integration**: ~10 hours
+- **Infrastructure & DevOps**: ~7 hours
+- **Testing, Debugging & Verification**: ~4 hours
+- **Documentation & Final Integration**: ~3 hours
+
+**Total**: **~90 hours**
+
+**Project Scope Covered**:
+
+- Foundation and configuration
+- PostgreSQL database architecture
+- Database migrations
+- Authentication and authorization
+- Multi-tenant architecture
+- Plans and subscriptions
+- Usage metering
+- Idempotency protection
+- Quota enforcement
+- Cost calculation
+- Billable API operations
+- Usage and cost reporting
+- Stripe Checkout
+- Stripe webhook processing
+- React frontend
+- Docker containerization
+- Docker Compose orchestration
+- Nginx reverse proxy
+- Production configuration
+- Testing and verification
+- Documentation and final integration
 
 **Time Accounting Note**:
-The hour figures are approximate focused-development estimates rather than
-automatically tracked stopwatch values. They are included to document the
-relative effort of each project area honestly.
 
+The **~90 hours** represents an approximate focused-development estimate
+across the complete project. It includes coding, architecture work, debugging,
+testing, integration, documentation, and deployment preparation. It is not a
+claim of 90 continuously tracked hours or 90 full working days.
+
+The **27 calendar days** describe the overall project period, while **~90 hours**
+describe the estimated focused effort invested across all 13 completed modules.
 ---
 
 ## FINAL CHECKLIST
