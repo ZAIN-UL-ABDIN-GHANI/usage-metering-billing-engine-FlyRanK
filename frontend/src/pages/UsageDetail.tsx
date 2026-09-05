@@ -1,11 +1,22 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { apiService } from '../services/api'
+import { apiService, UsageData } from '../services/api'
 import UsageBar from '../components/UsageBar'
 import { AlertCircle } from 'lucide-react'
 
+const DEFAULT_USAGE: UsageData = {
+  api_calls_used: 0,
+  api_calls_limit: 0,
+  ai_tokens_used: 0,
+  ai_tokens_limit: 0,
+  current_cost: 0,
+  billing_period_start: '',
+  billing_period_end: '',
+  plan_name: 'Unknown',
+}
+
 export default function UsageDetail() {
-  const { data: usage, isLoading } = useQuery({
+  const { data: usage, isLoading, error } = useQuery({
     queryKey: ['usage'],
     queryFn: () => apiService.getUsage(),
     refetchInterval: 30000,
@@ -15,8 +26,26 @@ export default function UsageDetail() {
     return <div className="text-center py-8 text-gray-600">Loading...</div>
   }
 
-  const apiCallsPercentage = (usage!.api_calls_used / usage!.api_calls_limit) * 100
-  const tokensPercentage = (usage!.ai_tokens_used / usage!.ai_tokens_limit) * 100
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+        <AlertCircle className="w-5 h-5 text-red-600" />
+        <p className="text-sm text-red-700">Unable to load usage data.</p>
+      </div>
+    )
+  }
+
+  const usageData = usage ?? DEFAULT_USAGE
+  const apiCallsUsed = usageData?.api_calls_used ?? 0
+  const apiCallsLimit = usageData?.api_calls_limit ?? 0
+  const aiTokensUsed = usageData?.ai_tokens_used ?? 0
+  const aiTokensLimit = usageData?.ai_tokens_limit ?? 0
+  const currentCost = usageData?.current_cost ?? 0
+
+  const apiCallsPercentage =
+    apiCallsLimit > 0 ? (apiCallsUsed / apiCallsLimit) * 100 : 0
+  const tokensPercentage =
+    aiTokensLimit > 0 ? (aiTokensUsed / aiTokensLimit) * 100 : 0
 
   return (
     <div className="space-y-6">
@@ -35,8 +64,8 @@ export default function UsageDetail() {
           <div className="flex justify-between items-center mb-2">
             <span className="text-gray-700">Usage</span>
             <span className="text-2xl font-bold text-gray-900">
-              {usage!.api_calls_used.toLocaleString()}/
-              {usage!.api_calls_limit.toLocaleString()}
+              {(apiCallsUsed ?? 0).toLocaleString()}/
+              {(apiCallsLimit ?? 0).toLocaleString()}
             </span>
           </div>
           <UsageBar percentage={apiCallsPercentage} />
@@ -46,13 +75,13 @@ export default function UsageDetail() {
           <div className="bg-blue-50 rounded p-4">
             <p className="text-xs font-semibold text-gray-600 uppercase">Used</p>
             <p className="text-2xl font-bold text-blue-600">
-              {usage!.api_calls_used.toLocaleString()}
+              {(apiCallsUsed ?? 0).toLocaleString()}
             </p>
           </div>
           <div className="bg-gray-50 rounded p-4">
             <p className="text-xs font-semibold text-gray-600 uppercase">Remaining</p>
             <p className="text-2xl font-bold text-gray-900">
-              {(usage!.api_calls_limit - usage!.api_calls_used).toLocaleString()}
+              {Math.max(0, apiCallsLimit - apiCallsUsed).toLocaleString()}
             </p>
           </div>
           <div className="bg-purple-50 rounded p-4">
@@ -72,8 +101,8 @@ export default function UsageDetail() {
           <div className="flex justify-between items-center mb-2">
             <span className="text-gray-700">Usage</span>
             <span className="text-2xl font-bold text-gray-900">
-              {usage!.ai_tokens_used.toLocaleString()}/
-              {usage!.ai_tokens_limit.toLocaleString()}
+              {(aiTokensUsed ?? 0).toLocaleString()}/
+              {(aiTokensLimit ?? 0).toLocaleString()}
             </span>
           </div>
           <UsageBar percentage={tokensPercentage} />
@@ -83,13 +112,13 @@ export default function UsageDetail() {
           <div className="bg-blue-50 rounded p-4">
             <p className="text-xs font-semibold text-gray-600 uppercase">Used</p>
             <p className="text-2xl font-bold text-blue-600">
-              {(usage!.ai_tokens_used / 1000).toLocaleString()}k
+              {((aiTokensUsed ?? 0) / 1000).toLocaleString()}k
             </p>
           </div>
           <div className="bg-gray-50 rounded p-4">
             <p className="text-xs font-semibold text-gray-600 uppercase">Remaining</p>
             <p className="text-2xl font-bold text-gray-900">
-              {((usage!.ai_tokens_limit - usage!.ai_tokens_used) / 1000).toLocaleString()}k
+              {((Math.max(0, aiTokensLimit - aiTokensUsed) / 1000) ?? 0).toLocaleString()}k
             </p>
           </div>
           <div className="bg-purple-50 rounded p-4">
@@ -109,23 +138,32 @@ export default function UsageDetail() {
             <div className="flex justify-between">
               <span className="text-gray-600">Start Date</span>
               <span className="font-semibold text-gray-900">
-                {new Date(usage!.billing_period_start).toLocaleDateString()}
+                {usageData.billing_period_start
+                  ? new Date(usageData.billing_period_start).toLocaleDateString()
+                  : '—'}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">End Date</span>
               <span className="font-semibold text-gray-900">
-                {new Date(usage!.billing_period_end).toLocaleDateString()}
+                {usageData.billing_period_end
+                  ? new Date(usageData.billing_period_end).toLocaleDateString()
+                  : '—'}
               </span>
             </div>
             <div className="flex justify-between pt-3 border-t">
               <span className="text-gray-600">Days Remaining</span>
               <span className="font-semibold text-gray-900">
-                {Math.ceil(
-                  (new Date(usage!.billing_period_end).getTime() -
-                    new Date().getTime()) /
-                    (1000 * 60 * 60 * 24)
-                )}
+                {usageData.billing_period_end
+                  ? Math.max(
+                      0,
+                      Math.ceil(
+                        (new Date(usageData.billing_period_end).getTime() -
+                          new Date().getTime()) /
+                          (1000 * 60 * 60 * 24)
+                      )
+                    )
+                  : 0}
               </span>
             </div>
           </div>
@@ -135,7 +173,7 @@ export default function UsageDetail() {
           <h3 className="font-semibold text-gray-900 mb-4">Current Cost</h3>
           <div className="space-y-3">
             <div className="text-4xl font-bold text-blue-600 mb-4">
-              ${(usage!.current_cost / 100).toFixed(2)}
+              ${((currentCost ?? 0) / 100).toFixed(2)}
             </div>
             <p className="text-sm text-gray-600">
               Based on current usage this billing period.
