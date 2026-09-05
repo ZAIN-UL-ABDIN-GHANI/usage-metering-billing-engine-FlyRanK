@@ -58,6 +58,28 @@ I structured the system in three layers:
 
 **Data Layer**: I designed a PostgreSQL schema with 16 tables for tenants, subscriptions, usage events, invoices, alerts, and audit trails. I added 40+ indexes for performance and UNIQUE constraints to guarantee idempotency.
 
+## 🏗️ Technical Architecture
+
+The complete system architecture is documented in **[`ARCHITECTURE.md`](./ARCHITECTURE.md)**.
+
+It covers:
+
+* System architecture and component design
+* Frontend, backend, and database layers
+* Complete project folder structure
+* API routers and service organization
+* PostgreSQL database schema and relationships
+* Authentication and multi-tenant architecture
+* Usage metering and quota enforcement flow
+* Pricing and billing calculation flow
+* Stripe Checkout and webhook flow
+* Idempotency and duplicate-request protection
+* Docker, Nginx, and production deployment architecture
+* Complete data flow and request lifecycle
+
+**See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the full technical architecture.**
+
+
 ## Technologies I Use & Why
 
 **Backend: FastAPI (Python)**
