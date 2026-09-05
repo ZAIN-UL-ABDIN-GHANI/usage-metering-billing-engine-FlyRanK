@@ -1,4 +1,6 @@
-# BUILDLOG.md - FlyRank Billing Engine Implementation
+# BUILDLOG.md 
+
+# FlyRank Billing Engine Implementation
 
 ## Project: FlyRank SaaS Usage Metering & Billing Engine
 **Status**: Complete
