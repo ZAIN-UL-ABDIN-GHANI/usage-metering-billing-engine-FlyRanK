@@ -23,10 +23,22 @@ export default function Plans() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
 
-  const { data: usage } = useQuery({
+  const { data: usage, isLoading, error } = useQuery({
     queryKey: ['usage'],
     queryFn: () => apiService.getUsage(),
   })
+
+  if (isLoading) {
+    return <div className="text-center py-8 text-gray-600">Loading plans...</div>
+  }
+
+  if (error || !usage) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
+        Unable to load plan information. Please refresh the page to try again.
+      </div>
+    )
+  }
 
   const plans: Plan[] = [
     {
@@ -63,7 +75,7 @@ export default function Plans() {
     },
   ]
 
-  const currentPlan = usage?.plan_name.toLowerCase() || 'free'
+  const currentPlan = (usage?.plan_name || '').toLowerCase() || 'free'
 
   const handleUpgrade = async (planId: string) => {
     if (planId === 'free') {
