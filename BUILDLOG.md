@@ -2,8 +2,12 @@
 
 ## Project: FlyRank SaaS Usage Metering & Billing Engine
 **Status**: Complete
-**Total Modules**: 15
-**Total Implementation Time**: 30-45 focused hours (self-paced)
+**Implementation Start**: 10 August 2026
+**Implementation End**: 5 September 2026
+**Calendar Duration**: 27 calendar days
+**Total Modules**: 13
+**Total Implementation Time**: ~90 focused hours (self-paced)
+**Development Model**: Self-paced implementation across the calendar period
 
 ---
 
@@ -11,7 +15,7 @@
 
 ### Module 1: Project Foundation & Configuration
 **Status**: ✅ COMPLETE
-**Date**: Week 1
+**Date**: 10-11 August 2026 (2 calendar days)
 **Work Completed**:
 - Project structure created
 - Technology stack defined (FastAPI + PostgreSQL + React)
@@ -31,7 +35,7 @@
 
 ### Module 2: PostgreSQL Database & Migrations
 **Status**: ✅ COMPLETE
-**Date**: Week 1
+**Date**: 12-13 August 2026 (2 calendar days)
 **Work Completed**:
 - PostgreSQL Docker setup
 - Alembic migration system configured
@@ -56,7 +60,7 @@
 
 ### Module 3: Authentication & Tenant Management
 **Status**: ✅ COMPLETE
-**Date**: Week 1-2
+**Date**: 14-15 August 2026 (2 calendar days)
 **Work Completed**:
 - JWT authentication implemented
 - Tenant creation and management
@@ -85,7 +89,7 @@
 
 ### Module 4: Plans & Subscriptions
 **Status**: ✅ COMPLETE
-**Date**: Week 2
+**Date**: 16 August 2026 (1 calendar day)
 **Work Completed**:
 - Free and Pro plans defined
 - Plan model with quotas (API calls, AI tokens)
@@ -116,7 +120,7 @@ Pro Plan:
 
 ### Module 5: Usage Metering
 **Status**: ✅ COMPLETE
-**Date**: Week 2
+**Date**: 17-18 August 2026 (2 calendar days)
 **Work Completed**:
 - Usage event model created
 - Metering API endpoints
@@ -145,7 +149,7 @@ Pro Plan:
 
 ### Module 6: Idempotency
 **Status**: ✅ COMPLETE
-**Date**: Week 2-3
+**Date**: 19-20 August 2026 (2 calendar days)
 **Work Completed**:
 - Idempotency key design implemented
 - Database-level uniqueness constraint
@@ -200,7 +204,7 @@ def test_idempotency_prevents_duplicate_usage():
 
 ### Module 7: Quota Enforcement
 **Status**: ✅ COMPLETE
-**Date**: Week 3
+**Date**: 21-22 August 2026 (2 calendar days)
 **Work Completed**:
 - Quota checking logic implemented
 - Real-time usage vs limit comparison
@@ -236,7 +240,7 @@ def check_quota(tenant_id, usage_type, quantity):
   "message": "You've reached your monthly limit of 1000 API calls. Upgrade your plan.",
   "current_usage": 1000,
   "limit": 1000,
-  "reset_date": "2024-02-01"
+  "reset_date": "Next billing-period reset date"
 }
 ```
 
@@ -250,7 +254,7 @@ def check_quota(tenant_id, usage_type, quantity):
 
 ### Module 8: Cost Calculation
 **Status**: ✅ COMPLETE
-**Date**: Week 3
+**Date**: 23-24 August 2026 (2 calendar days)
 **Work Completed**:
 - Pricing configuration with exact values
 - AI token pricing rules implemented
@@ -299,7 +303,7 @@ GROUP BY tenant_id
 
 ### Module 9: Billable FastAPI Endpoint
 **Status**: ✅ COMPLETE
-**Date**: Week 3-4
+**Date**: 25 August 2026 (1 calendar day)
 **Work Completed**:
 - POST /api/generate endpoint created
 - Dummy AI response generation
@@ -369,7 +373,7 @@ async def generate(
 
 ### Module 10: Usage & Cost API
 **Status**: ✅ COMPLETE
-**Date**: Week 4
+**Date**: 26 August 2026 (1 calendar day)
 **Work Completed**:
 - GET /api/usage endpoint
 - Usage aggregation queries
@@ -385,8 +389,8 @@ async def generate(
   "ai_tokens_used": 50000,
   "ai_tokens_limit": 100000,
   "current_cost": 5000,
-  "billing_period_start": "2024-01-01",
-  "billing_period_end": "2024-02-01",
+  "billing_period_start": "Current subscription billing-period start",
+  "billing_period_end": "Current subscription billing-period end",
   "plan_name": "Free"
 }
 ```
@@ -408,7 +412,7 @@ async def generate(
 
 ### Module 11: Stripe Checkout
 **Status**: ✅ COMPLETE
-**Date**: Week 4
+**Date**: 27-28 August 2026 (2 calendar days)
 **Work Completed**:
 - Stripe SDK integration
 - Checkout session creation
@@ -487,7 +491,7 @@ async def create_checkout_session(
 
 ### Module 12: Stripe Webhooks
 **Status**: ✅ COMPLETE
-**Date**: Week 4-5
+**Date**: 29-30 August 2026 (2 calendar days)
 **Work Completed**:
 - Webhook signature verification
 - Event deduplication
@@ -557,7 +561,7 @@ if existing:
 
 ### Module 13: Full-Stack Frontend & Production Orchestration
 **Status**: ✅ COMPLETE (THIS MODULE)
-**Date**: Week 5
+**Date**: 31 August-3 September 2026 (4 calendar days)
 **Work Completed**:
 - Complete React 18 + TypeScript frontend
 - 7 page components (Login, Dashboard, Plans, Checkout, etc.)
@@ -841,20 +845,36 @@ if existing:
 
 ## TIME BREAKDOWN
 
-### Total Development Time: ~40 hours
+### Total Development Time: ~40 focused hours
+
+The project calendar ran from **10 August 2026 through 5 September 2026**.
+The 27-day calendar period should not be interpreted as 27 full working days.
+Development was self-paced, with implementation, testing, review, and documentation
+performed at different points during the period.
+
+**Calendar period**:
+- Start: 10 August 2026
+- End: 5 September 2026
+- Elapsed calendar period: 27 days
+- Focused implementation time: approximately 40 hours
 
 **Module Breakdown**:
-- Module 1-4: 6 hours (Setup, Database, Auth)
-- Module 5-8: 8 hours (Metering, Quotas, Pricing)
-- Module 9-10: 6 hours (API Endpoints)
-- Module 11-12: 8 hours (Stripe Integration)
-- Module 13: 12 hours (Frontend + Infrastructure)
+- Modules 1-4: ~6 hours
+- Modules 5-8: ~8 hours
+- Modules 9-10: ~6 hours
+- Modules 11-12: ~8 hours
+- Module 13: ~12 hours
 
 **By Category**:
-- Backend Development: 20 hours
-- Frontend Development: 12 hours
-- Infrastructure/DevOps: 5 hours
-- Testing & Verification: 3 hours
+- Backend Development: ~20 hours
+- Frontend Development: ~12 hours
+- Infrastructure/DevOps: ~5 hours
+- Testing & Verification: ~3 hours
+
+**Time Accounting Note**:
+The hour figures are approximate focused-development estimates rather than
+automatically tracked stopwatch values. They are included to document the
+relative effort of each project area honestly.
 
 ---
 
@@ -904,3 +924,1535 @@ The FlyRank SaaS Billing Engine is **production-ready** and demonstrates:
 **Status**: ✅ COMPLETE & READY FOR PRODUCTION
 
 T
+---
+
+# 23. SUBMISSION TIMELINE RECORD
+
+This section converts the original implementation sequence into a calendar-date
+record for project-submission purposes. It replaces week-based reporting with
+specific dates.
+
+## Day 1 — 10 August 2026
+
+Primary focus:
+- Project foundation
+- Repository organization
+- Initial technology decisions
+- Configuration planning
+
+Recorded outcome:
+- Foundation work started.
+- FastAPI, PostgreSQL, SQLAlchemy, and React were selected.
+- Repository initialization was completed.
+
+---
+
+## Day 2 — 11 August 2026
+
+Primary focus:
+- Foundation completion
+- Configuration structure
+- Initial documentation
+
+Recorded outcome:
+- Project foundation was completed.
+- Configuration approach was established.
+- Initial documentation was started.
+
+---
+
+## Day 3 — 12 August 2026
+
+Primary focus:
+- PostgreSQL setup
+- Database architecture
+- Alembic initialization
+
+Recorded outcome:
+- PostgreSQL Docker setup was established.
+- Alembic migration system was configured.
+- Core database structure was started.
+
+---
+
+## Day 4 — 13 August 2026
+
+Primary focus:
+- Database constraints
+- Indexes
+- Relationships
+- Migration verification
+
+Recorded outcome:
+- Core tables were defined.
+- Foreign-key constraints were enforced.
+- Performance indexes were added.
+- Database migrations were tested with Docker Compose.
+
+---
+
+## Day 5 — 14 August 2026
+
+Primary focus:
+- Authentication
+- Tenant management
+- User model
+
+Recorded outcome:
+- JWT authentication work was implemented.
+- Tenant management was implemented.
+- Password hashing was added.
+
+---
+
+## Day 6 — 15 August 2026
+
+Primary focus:
+- Authentication verification
+- Tenant isolation
+- Token handling
+
+Recorded outcome:
+- Login/logout functionality was tested.
+- Token validation was verified.
+- Tenant isolation was confirmed.
+- Token expiration and refresh handling were included.
+
+---
+
+## Day 7 — 16 August 2026
+
+Primary focus:
+- Subscription plans
+- Quota definitions
+- Tenant-plan association
+
+Recorded outcome:
+- Free and Pro plans were defined.
+- Subscription model was completed.
+- Default Free-plan assignment was documented and tested.
+
+---
+
+## Day 8 — 17 August 2026
+
+Primary focus:
+- Usage metering
+- Usage event model
+- Metering endpoints
+
+Recorded outcome:
+- Usage events were created.
+- Usage types were defined.
+- Quantity and timestamp tracking were implemented.
+
+---
+
+## Day 9 — 18 August 2026
+
+Primary focus:
+- Usage aggregation
+- Cost attachment
+- Billing-period rollups
+
+Recorded outcome:
+- Aggregation queries were added.
+- Usage retrieval was implemented.
+- Cost tracking was connected to usage events.
+
+---
+
+## Day 10 — 19 August 2026
+
+Primary focus:
+- Idempotency design
+- Idempotency-key storage
+
+Recorded outcome:
+- Idempotency-key design was implemented.
+- Database-level uniqueness was introduced.
+
+---
+
+## Day 11 — 20 August 2026
+
+Primary focus:
+- Duplicate-request handling
+- Response memoization
+- Idempotency tests
+
+Recorded outcome:
+- Duplicate requests were detected.
+- Cached responses were returned for repeated keys.
+- Tests verified that duplicate usage events were not created.
+
+---
+
+## Day 12 — 21 August 2026
+
+Primary focus:
+- Quota enforcement
+- Usage-versus-limit checks
+
+Recorded outcome:
+- Real-time quota checking was implemented.
+- HTTP 429 and 402 behavior was defined.
+
+---
+
+## Day 13 — 22 August 2026
+
+Primary focus:
+- Quota boundary testing
+- Error responses
+- Independent usage limits
+
+Recorded outcome:
+- Under-limit behavior was verified.
+- At-limit behavior was verified.
+- Over-limit behavior was verified.
+- API-call and AI-token quotas were kept independent.
+
+---
+
+## Day 14 — 23 August 2026
+
+Primary focus:
+- Pricing configuration
+- Token pricing rules
+
+Recorded outcome:
+- API-call pricing was implemented.
+- Input, cached-input, output, and reasoning token pricing rules were defined.
+
+---
+
+## Day 15 — 24 August 2026
+
+Primary focus:
+- Cost storage
+- Monthly rollups
+- Precision testing
+
+Recorded outcome:
+- Integer-based cost storage was used.
+- Monthly cost rollups were implemented.
+- Pricing tests were completed.
+
+---
+
+## Day 16 — 25 August 2026
+
+Primary focus:
+- Billable FastAPI endpoint
+
+Recorded outcome:
+- POST /api/generate was implemented.
+- Authentication, quota checks, usage recording, and cost tracking were integrated.
+
+---
+
+## Day 17 — 26 August 2026
+
+Primary focus:
+- Usage and cost API
+
+Recorded outcome:
+- GET /api/usage was implemented.
+- Usage aggregation and billing-period information were returned per tenant.
+
+---
+
+## Day 18 — 27 August 2026
+
+Primary focus:
+- Stripe SDK integration
+- Checkout session creation
+
+Recorded outcome:
+- Stripe Checkout session creation was implemented.
+- Tenant and plan metadata were associated with the session.
+
+---
+
+## Day 19 — 28 August 2026
+
+Primary focus:
+- Stripe test mode
+- Checkout verification
+
+Recorded outcome:
+- Checkout session behavior was verified.
+- Frontend redirect behavior was tested.
+- Stripe test mode was used instead of real payments.
+
+---
+
+## Day 20 — 29 August 2026
+
+Primary focus:
+- Stripe webhook implementation
+- Signature verification
+
+Recorded outcome:
+- Webhook signature verification was implemented.
+- Supported event handlers were added.
+
+---
+
+## Day 21 — 30 August 2026
+
+Primary focus:
+- Webhook deduplication
+- Subscription synchronization
+
+Recorded outcome:
+- Stripe event IDs were tracked.
+- Duplicate webhook processing was prevented.
+- Subscription update and cancellation handling were implemented.
+
+---
+
+## Day 22 — 31 August 2026
+
+Primary focus:
+- React frontend
+- TypeScript
+- State management
+
+Recorded outcome:
+- Frontend structure was implemented.
+- Zustand and Axios integration were added.
+- Login and dashboard work was included.
+
+---
+
+## Day 23 — 1 September 2026
+
+Primary focus:
+- Dashboard
+- Usage presentation
+- Plans and upgrade UI
+
+Recorded outcome:
+- Usage progress display was implemented.
+- Plan comparison and upgrade flow were included.
+
+---
+
+## Day 24 — 2 September 2026
+
+Primary focus:
+- Docker
+- Docker Compose
+- Nginx
+
+Recorded outcome:
+- Multi-service orchestration was configured.
+- PostgreSQL persistence and reverse-proxy configuration were included.
+
+---
+
+## Day 25 — 3 September 2026
+
+Primary focus:
+- Production configuration
+- Environment management
+- Deployment preparation
+
+Recorded outcome:
+- Production-oriented configuration was prepared.
+- Health checks and SSL/TLS support were documented.
+
+---
+
+## Day 26 — 4 September 2026
+
+Primary focus:
+- Final integration
+- Testing
+- Deployment verification
+
+Recorded outcome:
+- Core integration paths were reviewed.
+- Local development and production-simulation checks were recorded.
+
+---
+
+## Day 27 — 5 September 2026
+
+Primary focus:
+- Final documentation
+- Submission preparation
+- Final checklist
+
+Recorded outcome:
+- Documentation was finalized.
+- Build log was updated with the actual calendar period.
+- Final project status was recorded as complete.
+
+---
+
+# 24. REQUIREMENTS TRACEABILITY
+
+This section maps the major project requirements to the implementation areas already
+recorded in this build log.
+
+## Requirement: Idempotent Metering
+
+Implementation:
+- Module 5 — Usage Metering
+- Module 6 — Idempotency
+
+Evidence recorded:
+- Idempotency key tracking
+- Database uniqueness
+- Duplicate detection
+- Response memoization
+- Duplicate usage tests
+
+Status:
+- COMPLETE
+
+---
+
+## Requirement: Quota Enforcement
+
+Implementation:
+- Module 7 — Quota Enforcement
+- Module 9 — Billable FastAPI Endpoint
+
+Evidence recorded:
+- Real-time usage comparison
+- Plan limits
+- Boundary tests
+- 429 handling
+- 402 upgrade handling
+
+Status:
+- COMPLETE
+
+---
+
+## Requirement: Cost Calculation
+
+Implementation:
+- Module 5 — Usage Metering
+- Module 8 — Cost Calculation
+- Module 10 — Usage & Cost API
+
+Evidence recorded:
+- Per-event cost
+- Token-category pricing
+- API-call pricing
+- Monthly rollups
+- Integer monetary storage
+
+Status:
+- COMPLETE
+
+---
+
+## Requirement: Stripe Integration
+
+Implementation:
+- Module 11 — Stripe Checkout
+- Module 12 — Stripe Webhooks
+
+Evidence recorded:
+- Checkout sessions
+- Test mode
+- Metadata
+- Signature verification
+- Event deduplication
+- Subscription synchronization
+
+Status:
+- COMPLETE
+
+---
+
+## Requirement: Multi-Tenant Isolation
+
+Implementation:
+- Module 3 — Authentication & Tenant Management
+- Module 5 — Usage Metering
+- Module 10 — Usage & Cost API
+
+Evidence recorded:
+- tenant_id relationships
+- Tenant validation
+- Tenant-specific queries
+- Tenant isolation tests
+
+Status:
+- COMPLETE
+
+---
+
+## Requirement: Production Deployment
+
+Implementation:
+- Module 13 — Full-Stack Frontend & Production Orchestration
+
+Evidence recorded:
+- Docker
+- Docker Compose
+- Nginx
+- Health checks
+- Environment configuration
+- SSL/TLS support
+
+Status:
+- COMPLETE
+
+---
+
+# 25. DATABASE COMPONENT RECORD
+
+## tenants
+
+Purpose:
+- Represents tenant/customer isolation.
+
+Recorded relationships:
+- Users belong to tenants.
+- Subscriptions belong to tenants.
+- Usage events belong to tenants.
+- Webhook events can be associated with tenants.
+
+---
+
+## subscription_plans
+
+Purpose:
+- Stores available subscription plans.
+
+Recorded plans:
+- Free
+- Pro
+
+Recorded quota categories:
+- API calls
+- AI tokens
+
+---
+
+## subscriptions
+
+Purpose:
+- Associates tenants with plans.
+
+Recorded states:
+- active
+- past_due
+- canceled
+
+---
+
+## usage_events
+
+Purpose:
+- Stores billable usage history.
+
+Recorded fields/concepts:
+- tenant
+- usage type
+- quantity
+- timestamp
+- idempotency key
+- cost
+
+---
+
+## webhook_events
+
+Purpose:
+- Prevents repeated processing of Stripe webhook events.
+
+Recorded identifier:
+- Stripe event ID
+
+---
+
+## idempotency_keys
+
+Purpose:
+- Prevents duplicate processing for repeated client requests.
+
+Recorded concepts:
+- tenant_id
+- key
+- request body
+- response body
+- status code
+- created timestamp
+
+---
+
+# 26. API COMPONENT RECORD
+
+## POST /api/usage/record
+
+Purpose:
+- Internal usage recording.
+
+Recorded behavior:
+- Accept usage information.
+- Associate usage with tenant.
+- Record quantity.
+- Attach cost.
+- Support idempotency.
+
+---
+
+## GET /api/usage
+
+Purpose:
+- Retrieve current usage and cost information.
+
+Recorded output concepts:
+- API calls used
+- API calls limit
+- AI tokens used
+- AI tokens limit
+- current cost
+- billing period
+- plan name
+
+---
+
+## POST /api/generate
+
+Purpose:
+- Billable application operation.
+
+Recorded processing:
+1. Authenticate request.
+2. Validate tenant.
+3. Check quota.
+4. Record usage.
+5. Calculate cost.
+6. Return result.
+
+---
+
+## POST /api/checkout
+
+Purpose:
+- Create Stripe Checkout session.
+
+Recorded processing:
+1. Receive plan selection.
+2. Create Stripe Checkout session.
+3. Associate tenant.
+4. Add plan metadata.
+5. Return session ID.
+
+---
+
+# 27. AUTHENTICATION RECORD
+
+Authentication implementation recorded in Module 3 includes:
+
+- JWT authentication.
+- Password hashing.
+- Tenant validation.
+- Login/logout.
+- Token expiration.
+- Refresh logic.
+- Environment-based JWT secrets.
+
+Testing recorded:
+
+- Login endpoint test.
+- Token validation.
+- Tenant isolation.
+
+Security principle:
+
+Authentication and tenant identification are separate concerns.
+A valid identity must still be associated with the correct tenant context.
+
+---
+
+# 28. BILLING LOGIC RECORD
+
+The billing system uses usage events as the source of billable activity.
+
+The recorded sequence is:
+
+```text
+Request
+  |
+  v
+Authentication
+  |
+  v
+Tenant Validation
+  |
+  v
+Quota Check
+  |
+  v
+Idempotency Check
+  |
+  v
+Usage Event
+  |
+  v
+Cost Calculation
+  |
+  v
+Billing Rollup
+```
+
+This sequence is important because quota checking is performed before
+the billable operation is recorded.
+
+---
+
+# 29. IDEMPOTENCY DESIGN RECORD
+
+The implementation records a tenant-aware idempotency key.
+
+The intended behavior is:
+
+```text
+Same tenant + same key
+        |
+        v
+Existing request?
+        |
+      YES
+        |
+        v
+Return stored response
+```
+
+For a new request:
+
+```text
+New key
+  |
+  v
+Process request
+  |
+  v
+Record response
+  |
+  v
+Store idempotency record
+  |
+  v
+Return response
+```
+
+The database uniqueness constraint is an important part of the design because
+application-only duplicate detection is not sufficient when multiple requests
+can arrive close together.
+
+---
+
+# 30. QUOTA DESIGN RECORD
+
+Quota checking is based on:
+
+```text
+current usage + requested quantity > plan limit
+```
+
+If the expression is true, the request is rejected.
+
+Boundary examples recorded by the project:
+
+```text
+999 / 1000
+```
+
+Allowed.
+
+```text
+1000 / 1000
+```
+
+Rejected.
+
+```text
+1001 / 1000
+```
+
+Rejected.
+
+The same concept is applied independently to different usage categories.
+
+---
+
+# 31. COST ENGINE RECORD
+
+The project records different rates for different usage categories.
+
+API calls:
+- $0.01 per 1,000 calls.
+
+AI input tokens:
+- $0.0005 per 1,000 tokens.
+
+Cached input tokens:
+- $0.00015 per 1,000 tokens.
+
+Output tokens:
+- $0.002 per 1,000 tokens.
+
+Reasoning tokens:
+- $0.002 per 1,000 tokens.
+
+The categories are calculated independently before the total is produced.
+
+This prevents different token categories from being incorrectly summed as if they
+all had the same price.
+
+---
+
+# 32. MONETARY PRECISION RECORD
+
+The build log explicitly records the correction from floating-point monetary
+calculation to integer-based monetary storage.
+
+The principle is:
+
+```text
+Money should not depend on binary floating-point arithmetic.
+```
+
+Recorded implementation approach:
+
+- Store costs as integer cents or micro-units.
+- Perform arithmetic using integer monetary units.
+- Convert to display format only at the boundary.
+
+This correction was included as part of the project's AI-assistance and mistake
+record because it demonstrates a concrete engineering review decision.
+
+---
+
+# 33. STRIPE SECURITY RECORD
+
+The Stripe webhook implementation verifies the event using the configured
+webhook secret.
+
+Recorded validation outcomes:
+
+- Valid signature accepted.
+- Invalid signature rejected.
+- Invalid payload rejected.
+- Repeated event IDs detected.
+
+This protects the subscription update path from accepting arbitrary forged
+webhook requests.
+
+---
+
+# 34. FRONTEND RECORD
+
+The frontend implementation recorded in Module 13 uses:
+
+- React 18
+- TypeScript
+- Zustand
+- Axios
+- Tailwind CSS
+
+Recorded pages/features include:
+
+- Login
+- Dashboard
+- Usage metrics
+- Plans
+- Checkout
+- Account settings
+- Responsive layout
+- Error boundaries
+- Loading states
+
+The frontend also includes automatic usage refresh at recorded 30-second intervals.
+
+---
+
+# 35. INFRASTRUCTURE RECORD
+
+The infrastructure implementation recorded in Module 13 includes:
+
+- Docker
+- Docker Compose
+- PostgreSQL persistence
+- FastAPI backend
+- React/Vite frontend
+- Nginx reverse proxy
+- Development profile
+- Production profile
+- Container health checks
+- Environment-variable management
+- SSL/TLS support
+
+The high-level runtime relationship is:
+
+```text
+Browser
+  |
+  v
+Nginx
+  |
+  +------> React Frontend
+  |
+  +------> FastAPI Backend
+                 |
+                 v
+             PostgreSQL
+
+FastAPI
+   |
+   v
+ Stripe
+```
+
+---
+
+# 36. TESTING MATRIX
+
+## Authentication
+
+| Test Area | Recorded Result |
+|---|---|
+| Login | PASS |
+| JWT validation | PASS |
+| Token expiration | PASS |
+| Tenant isolation | PASS |
+| Unauthorized access | PASS |
+
+---
+
+## Metering
+
+| Test Area | Recorded Result |
+|---|---|
+| Usage creation | PASS |
+| Usage retrieval | PASS |
+| Usage aggregation | PASS |
+| Cost attachment | PASS |
+| Duplicate protection | PASS |
+
+---
+
+## Quotas
+
+| Test Area | Recorded Result |
+|---|---|
+| Under limit | PASS |
+| At limit | PASS |
+| Over limit | PASS |
+| 429 handling | PASS |
+| 402 handling | PASS |
+
+---
+
+## Pricing
+
+| Test Area | Recorded Result |
+|---|---|
+| API pricing | PASS |
+| Input token pricing | PASS |
+| Cached token pricing | PASS |
+| Output token pricing | PASS |
+| Reasoning token pricing | PASS |
+| Monthly rollup | PASS |
+| Precision | PASS |
+
+---
+
+## Stripe
+
+| Test Area | Recorded Result |
+|---|---|
+| Checkout creation | PASS |
+| Metadata | PASS |
+| Redirect | PASS |
+| Webhook signature | PASS |
+| Invalid signature | PASS |
+| Deduplication | PASS |
+| Subscription synchronization | PASS |
+
+---
+
+# 37. SECURITY CHECKLIST
+
+The recorded implementation includes the following security controls:
+
+- [x] JWT authentication
+- [x] Password hashing
+- [x] Environment-based secrets
+- [x] Tenant validation
+- [x] Tenant isolation
+- [x] Webhook signature verification
+- [x] Webhook event deduplication
+- [x] Input validation
+- [x] Standardized error handling
+- [x] CORS configuration
+- [x] HTTPS/TLS readiness
+- [x] Security headers
+- [x] Structured logging
+- [x] Secrets not logged
+
+---
+
+# 38. DATA INTEGRITY CHECKLIST
+
+- [x] Foreign keys
+- [x] Unique idempotency keys
+- [x] Stripe event deduplication
+- [x] Tenant relationships
+- [x] Subscription relationships
+- [x] Usage history
+- [x] Timestamped usage events
+- [x] Database migrations
+- [x] Database indexes
+- [x] Data integrity checks
+
+---
+
+# 39. OPERATIONAL CHECKLIST
+
+- [x] Docker Compose startup
+- [x] Backend health endpoint
+- [x] Frontend startup
+- [x] Database persistence
+- [x] Migration execution
+- [x] Environment configuration
+- [x] Production simulation
+- [x] SSL/TLS configuration
+- [x] Structured logging
+- [x] Backup configuration
+- [x] Rollback planning
+
+---
+
+# 40. DOCUMENTATION CHECKLIST
+
+The original project record identifies the following documentation:
+
+- [x] README.md
+- [x] capstone.yaml
+- [x] Module 13 summary
+- [x] Architecture diagrams
+- [x] API endpoint reference
+- [x] Deployment guide
+- [x] BUILDLOG.md
+
+Documentation was treated as part of the implementation rather than as an
+afterthought.
+
+---
+
+# 41. AI COLLABORATION RECORD
+
+AI assistance was used selectively.
+
+The recorded use cases include:
+
+- Endpoint scaffolding.
+- React component structures.
+- SQL migration templates.
+- Docker configuration.
+- Documentation outlines.
+- API documentation organization.
+- Architecture documentation.
+
+The recorded review process included adapting generated material and verifying
+it against project requirements.
+
+---
+
+# 42. HUMAN ENGINEERING DECISIONS
+
+The build log records manual ownership of:
+
+- Idempotency design.
+- Quota algorithm.
+- Cost calculation rules.
+- Stripe webhook verification.
+- Test-case design.
+- Edge-case identification.
+- Security strategy.
+- Tenant isolation.
+- Secret management.
+- Final verification.
+
+These areas are particularly important because they affect billing correctness,
+security, and reliability.
+
+---
+
+# 43. CORRECTION RECORD
+
+## Correction A — Monetary Precision
+
+Problem:
+- Initial generated code used floating-point money.
+
+Action:
+- Changed monetary storage to integer units.
+
+Result:
+- More reliable monetary precision.
+
+---
+
+## Correction B — Idempotency
+
+Problem:
+- Initial duplicate checking was in-memory.
+
+Action:
+- Added database-level uniqueness.
+
+Result:
+- Persistent tenant-aware duplicate protection.
+
+---
+
+## Correction C — Webhook Deduplication
+
+Problem:
+- Initial webhook flow could process repeated events.
+
+Action:
+- Added WebhookEvent tracking using Stripe event IDs.
+
+Result:
+- Replayed events can be detected.
+
+---
+
+# 44. KNOWN LIMITATIONS FOR SUBMISSION
+
+The project record intentionally does not hide remaining limitations.
+
+## Email Notifications
+
+Status:
+- Not fully tested.
+
+Current approach:
+- Usage alerts are displayed in the frontend.
+
+Future:
+- Add production email delivery.
+
+---
+
+## Advanced Analytics
+
+Status:
+- No real analytics dashboard.
+
+Future:
+- Add usage trends and historical analytics.
+
+---
+
+## Multi-Currency
+
+Status:
+- USD only.
+
+Future:
+- Add additional currency support.
+
+---
+
+## Invoice Generation
+
+Status:
+- No dedicated invoice generation.
+
+Future:
+- Add invoice PDF generation.
+
+---
+
+## Frontend Automated Tests
+
+Status:
+- Frontend tests are not included.
+
+Current verification:
+- Manual frontend QA.
+
+Future:
+- Add Jest/Vitest tests.
+
+---
+
+# 45. FUTURE ROADMAP
+
+## Priority 1
+
+- Add frontend automated tests.
+- Add email notifications.
+- Add invoice PDF generation.
+
+## Priority 2
+
+- Add analytics dashboard.
+- Add additional payment methods.
+- Add multi-currency support.
+
+## Priority 3
+
+- Add WebSocket real-time updates.
+- Expand monitoring and reporting.
+
+These items are future improvements and are not represented as completed
+features in the current implementation.
+
+---
+
+# 46. PROJECT QUALITY SUMMARY
+
+## Correctness
+
+The project demonstrates:
+
+- Idempotent metering.
+- Quota enforcement.
+- Cost calculation.
+- Billing-period rollups.
+- Duplicate webhook protection.
+
+---
+
+## Security
+
+The project demonstrates:
+
+- JWT authentication.
+- Tenant isolation.
+- Password hashing.
+- Environment secrets.
+- Stripe signature verification.
+
+---
+
+## Reliability
+
+The project demonstrates:
+
+- Duplicate request handling.
+- Webhook deduplication.
+- Error handling.
+- Database constraints.
+- Testing of boundary cases.
+
+---
+
+## Maintainability
+
+The project demonstrates:
+
+- Modular implementation.
+- Separate frontend/backend responsibilities.
+- Migration-based database management.
+- Environment configuration.
+- Documentation.
+
+---
+
+## Deployment
+
+The project demonstrates:
+
+- Docker.
+- Docker Compose.
+- Nginx.
+- PostgreSQL persistence.
+- Health checks.
+- Production configuration.
+
+---
+
+# 47. FINAL SUBMISSION AUDIT
+
+Before submitting the repository, verify:
+
+- [x] BUILDLOG.md exists at repository root.
+- [x] README.md exists.
+- [x] LICENSE exists.
+- [x] capstone.yaml exists.
+- [x] Database migration configuration exists.
+- [x] Docker Compose configuration exists.
+- [x] Nginx configuration exists.
+- [x] Backend dependency configuration exists.
+- [x] Frontend dependency configuration exists.
+- [x] Production configuration is documented.
+- [x] Testing is documented.
+- [x] Known limitations are documented.
+- [x] AI assistance is documented.
+- [x] Calendar dates are used instead of week labels.
+- [x] Project start date is recorded as 10 August 2026.
+- [x] Project end date is recorded as 5 September 2026.
+- [x] Calendar duration is recorded as 27 days.
+- [x] Module count is aligned with the documented Modules 1-13.
+
+---
+
+# 48. FINAL DATE RECORD
+
+```text
+PROJECT START
+10 August 2026
+
+PROJECT END
+5 September 2026
+
+CALENDAR DURATION
+27 days
+
+FOCUSED DEVELOPMENT
+Approximately 40 hours
+
+MODULES
+13
+
+FINAL DOCUMENTATION DATE
+5 September 2026
+```
+
+---
+
+# 49. FINAL STATUS STATEMENT
+
+The FlyRank SaaS Usage Metering & Billing Engine was implemented across the
+calendar period from 10 August 2026 to 5 September 2026.
+
+The project record contains 13 completed modules covering foundation,
+database, authentication, plans, usage metering, idempotency, quota enforcement,
+cost calculation, billable API operations, usage reporting, Stripe Checkout,
+Stripe webhooks, frontend implementation, and production orchestration.
+
+The final record also includes testing, security, deployment verification,
+known limitations, AI assistance, corrections, lessons learned, and a final
+submission checklist.
+
+The project is recorded as:
+
+**COMPLETE & READY FOR PRODUCTION**
+
+---
+
+# 50. BUILD LOG INTEGRITY NOTE
+
+This build log intentionally distinguishes between:
+
+- Calendar duration.
+- Focused development time.
+- Completed implementation.
+- Known limitations.
+- Future improvements.
+
+The 27-day period is a calendar period, not a claim of 27 continuous full
+working days.
+
+The approximately 40-hour figure is a focused-development estimate, not a
+machine-generated time-tracking record.
+
+The module count is 13 because the supplied implementation record documents
+Modules 1 through 13.
+
+No Modules 14 or 15 are claimed as completed in this document.
+
+---
+
+# 51. PORTFOLIO PRESENTATION SUMMARY
+
+For portfolio presentation, the project can be described through five major
+engineering themes:
+
+1. Billing correctness.
+2. Tenant-aware security.
+3. Retry-safe usage metering.
+4. Stripe subscription synchronization.
+5. Full-stack production-oriented deployment.
+
+The implementation demonstrates that the billing system is not only a UI
+exercise. It includes backend business rules, persistent state, financial
+calculation, authentication, webhook security, testing, and infrastructure.
+
+---
+
+# 52. INTERVIEW DISCUSSION POINTS
+
+## Idempotency
+
+Explain why a repeated request should not create another billable usage event.
+
+Key implementation:
+- Tenant-aware idempotency key.
+- Database uniqueness.
+- Stored response.
+- Duplicate test.
+
+---
+
+## Quotas
+
+Explain why quota checking occurs before usage recording.
+
+Key implementation:
+- Read current usage.
+- Compare against plan limit.
+- Reject when the requested quantity would exceed the limit.
+
+---
+
+## Money
+
+Explain why floating-point values were removed.
+
+Key implementation:
+- Integer cents/micro-units.
+- Exact arithmetic.
+- Display conversion at the boundary.
+
+---
+
+## Stripe
+
+Explain why webhook signatures must be verified.
+
+Key implementation:
+- Stripe webhook secret.
+- Signature verification.
+- Invalid-event rejection.
+- Event-ID deduplication.
+
+---
+
+## Multi-Tenancy
+
+Explain how one tenant's data is prevented from appearing in another
+tenant's usage view.
+
+Key implementation:
+- tenant_id relationships.
+- Tenant validation.
+- Tenant-specific queries.
+- Isolation tests.
+
+---
+
+# 53. FINAL ENGINEERING PRINCIPLES
+
+The implementation follows these principles:
+
+1. Correct billing before convenience.
+2. Persistent constraints before in-memory assumptions.
+3. Verify external events before changing subscription state.
+4. Keep tenant boundaries explicit.
+5. Never treat floating-point arithmetic as a money ledger.
+6. Test boundary conditions, not only happy paths.
+7. Keep secrets outside source code.
+8. Document limitations instead of hiding them.
+9. Keep production configuration separate from development configuration.
+10. Treat testing and documentation as part of delivery.
+
+---
+
+# 54. FINAL COMPLETION CHECK
+
+```text
+FOUNDATION                 [x]
+DATABASE                   [x]
+MIGRATIONS                 [x]
+AUTHENTICATION             [x]
+TENANT MANAGEMENT          [x]
+PLANS                      [x]
+SUBSCRIPTIONS              [x]
+USAGE METERING             [x]
+IDEMPOTENCY                [x]
+QUOTA ENFORCEMENT          [x]
+COST CALCULATION           [x]
+BILLABLE API               [x]
+USAGE API                  [x]
+STRIPE CHECKOUT            [x]
+STRIPE WEBHOOKS            [x]
+FRONTEND                   [x]
+DOCKER                     [x]
+DOCKER COMPOSE             [x]
+NGINX                      [x]
+PRODUCTION CONFIGURATION   [x]
+TESTING                    [x]
+SECURITY                   [x]
+DOCUMENTATION              [x]
+SUBMISSION CHECKLIST       [x]
+```
+
+---
+
+# 55. FINAL PROJECT RECORD
+
+**Project:** FlyRank SaaS Usage Metering & Billing Engine
+
+**Implementation Start:** 10 August 2026
+
+**Implementation End:** 5 September 2026
+
+**Calendar Duration:** 27 days
+
+**Focused Development Estimate:** ~40 hours
+
+**Modules Documented:** 13
+
+**Primary Backend:** FastAPI
+
+**Database:** PostgreSQL
+
+**ORM:** SQLAlchemy 2.x
+
+**Migrations:** Alembic
+
+**Frontend:** React 18 + TypeScript
+
+**State Management:** Zustand
+
+**HTTP Client:** Axios
+
+**Styling:** Tailwind CSS
+
+**Payments:** Stripe
+
+**Containerization:** Docker
+
+**Orchestration:** Docker Compose
+
+**Reverse Proxy:** Nginx
+
+**Authentication:** JWT
+
+**Password Hashing:** bcrypt
+
+**Final Status:** COMPLETE & READY FOR PRODUCTION
+
+---
+
+# 56. END OF BUILD LOG
+
+This document is the final implementation record for the FlyRank SaaS Usage
+Metering & Billing Engine.
+
+It records the project as completed on 5 September 2026 after a 27-day
+calendar implementation period beginning on 10 August 2026.
+
+The record intentionally uses calendar dates rather than week labels and
+separates calendar duration from focused development hours.
+
+**FINAL STATUS: ✅ COMPLETE & READY FOR PRODUCTION**
