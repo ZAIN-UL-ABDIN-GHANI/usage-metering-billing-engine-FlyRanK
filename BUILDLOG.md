@@ -2256,7 +2256,7 @@ CALENDAR DURATION
 27 days
 
 FOCUSED DEVELOPMENT
-Approximately 40 hours
+Approximately 90 hours
 
 MODULES
 13
