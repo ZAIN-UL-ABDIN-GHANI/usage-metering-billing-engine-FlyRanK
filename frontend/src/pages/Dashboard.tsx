@@ -2,9 +2,20 @@ import React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle, TrendingUp, Zap } from 'lucide-react'
-import { apiService } from '../services/api'
+import { apiService, UsageData } from '../services/api'
 import UsageBar from '../components/UsageBar'
 import CostBreakdown from '../components/CostBreakdown'
+
+const DEFAULT_USAGE: UsageData = {
+  api_calls_used: 0,
+  api_calls_limit: 0,
+  ai_tokens_used: 0,
+  ai_tokens_limit: 0,
+  current_cost: 0,
+  billing_period_start: '',
+  billing_period_end: '',
+  plan_name: 'Unknown',
+}
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -34,9 +45,17 @@ export default function Dashboard() {
     )
   }
 
+  const usageData = usage ?? DEFAULT_USAGE
+  const apiCallsUsed = usageData?.api_calls_used ?? 0
+  const apiCallsLimit = usageData?.api_calls_limit ?? 0
+  const aiTokensUsed = usageData?.ai_tokens_used ?? 0
+  const aiTokensLimit = usageData?.ai_tokens_limit ?? 0
+  const currentCost = usageData?.current_cost ?? 0
+
   const apiCallsPercentage =
-    (usage!.api_calls_used / usage!.api_calls_limit) * 100
-  const tokensPercentage = (usage!.ai_tokens_used / usage!.ai_tokens_limit) * 100
+    apiCallsLimit > 0 ? (apiCallsUsed / apiCallsLimit) * 100 : 0
+  const tokensPercentage =
+    aiTokensLimit > 0 ? (aiTokensUsed / aiTokensLimit) * 100 : 0
 
   const isNearLimit = apiCallsPercentage > 80 || tokensPercentage > 80
 
@@ -48,7 +67,7 @@ export default function Dashboard() {
           Welcome back
         </h1>
         <p className="text-blue-100">
-          Current plan: <span className="font-semibold">{usage!.plan_name}</span>
+          Current plan: <span className="font-semibold">{usageData.plan_name || 'Unknown'}</span>
         </p>
       </div>
 
@@ -80,14 +99,14 @@ export default function Dashboard() {
             <Zap className="w-5 h-5 text-blue-600" />
           </div>
           <div className="text-2xl font-bold text-gray-900 mb-2">
-            {usage!.api_calls_used.toLocaleString()}
+            {(apiCallsUsed ?? 0).toLocaleString()}
             <span className="text-lg text-gray-600 ml-2">
-              / {usage!.api_calls_limit.toLocaleString()}
+              / {(apiCallsLimit ?? 0).toLocaleString()}
             </span>
           </div>
           <UsageBar percentage={apiCallsPercentage} />
           <p className="text-xs text-gray-600 mt-2">
-            {Math.round((usage!.api_calls_limit - usage!.api_calls_used))} calls remaining this month
+            {Math.max(0, Math.round(apiCallsLimit - apiCallsUsed)).toLocaleString()} calls remaining this month
           </p>
         </div>
 
@@ -98,14 +117,14 @@ export default function Dashboard() {
             <TrendingUp className="w-5 h-5 text-purple-600" />
           </div>
           <div className="text-2xl font-bold text-gray-900 mb-2">
-            {usage!.ai_tokens_used.toLocaleString()}
+            {(aiTokensUsed ?? 0).toLocaleString()}
             <span className="text-lg text-gray-600 ml-2">
-              / {usage!.ai_tokens_limit.toLocaleString()}
+              / {(aiTokensLimit ?? 0).toLocaleString()}
             </span>
           </div>
           <UsageBar percentage={tokensPercentage} />
           <p className="text-xs text-gray-600 mt-2">
-            {Math.round((usage!.ai_tokens_limit - usage!.ai_tokens_used)).toLocaleString()} tokens remaining this month
+            {Math.max(0, Math.round(aiTokensLimit - aiTokensUsed)).toLocaleString()} tokens remaining this month
           </p>
         </div>
       </div>
@@ -115,7 +134,7 @@ export default function Dashboard() {
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-sm font-medium text-gray-600 mb-2">Current Month Cost</h3>
           <div className="text-3xl font-bold text-gray-900">
-            ${(usage!.current_cost / 100).toFixed(2)}
+            ${((currentCost ?? 0) / 100).toFixed(2)}
           </div>
           <p className="text-xs text-gray-600 mt-2">Based on current usage</p>
         </div>
@@ -123,9 +142,13 @@ export default function Dashboard() {
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-sm font-medium text-gray-600 mb-2">Billing Period</h3>
           <div className="text-sm font-semibold text-gray-900">
-            {new Date(usage!.billing_period_start).toLocaleDateString()} —
+            {usageData.billing_period_start
+              ? new Date(usageData.billing_period_start).toLocaleDateString()
+              : '—'}
             <br />
-            {new Date(usage!.billing_period_end).toLocaleDateString()}
+            {usageData.billing_period_end
+              ? new Date(usageData.billing_period_end).toLocaleDateString()
+              : '—'}
           </div>
         </div>
 
@@ -138,7 +161,7 @@ export default function Dashboard() {
             >
               View Details
             </button>
-            {usage!.plan_name === 'Free' && (
+            {usageData.plan_name === 'Free' && (
               <button
                 onClick={() => navigate('/plans')}
                 className="w-full px-3 py-2 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 rounded transition"
@@ -151,7 +174,7 @@ export default function Dashboard() {
       </div>
 
       {/* Cost Breakdown */}
-      <CostBreakdown usage={usage!} />
+      <CostBreakdown usage={usageData} />
     </div>
   )
 }
