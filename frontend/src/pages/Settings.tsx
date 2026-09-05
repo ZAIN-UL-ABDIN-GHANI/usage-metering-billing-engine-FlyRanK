@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { AlertCircle } from 'lucide-react'
 
 export default function Settings() {
+  const navigate = useNavigate()
   const { email } = useAuthStore()
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [notifications, setNotifications] = useState(true)
@@ -161,7 +163,10 @@ export default function Settings() {
           <button className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition font-medium">
             Send Email
           </button>
-          <button className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition font-medium">
+          <button
+            onClick={() => navigate('/docs')}
+            className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition font-medium"
+          >
             View Docs
           </button>
         </div>
