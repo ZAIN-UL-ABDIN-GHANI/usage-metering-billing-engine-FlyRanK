@@ -2300,13 +2300,13 @@ This build log intentionally distinguishes between:
 The 27-day period is a calendar period, not a claim of 27 continuous full
 working days.
 
-The approximately 40-hour figure is a focused-development estimate, not a
+The approximately 90-hour figure is a focused-development estimate, not a
 machine-generated time-tracking record.
 
 The module count is 13 because the supplied implementation record documents
 Modules 1 through 13.
 
-No Modules 14 or 15 are claimed as completed in this document.
+
 
 ---
 
@@ -2446,7 +2446,7 @@ SUBMISSION CHECKLIST       [x]
 
 **Calendar Duration:** 27 days
 
-**Focused Development Estimate:** ~40 hours
+**Focused Development Estimate:** ~90 hours
 
 **Modules Documented:** 13
 
