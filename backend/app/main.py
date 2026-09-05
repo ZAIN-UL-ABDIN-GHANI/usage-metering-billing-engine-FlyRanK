@@ -9,11 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.database import create_all_tables
 from app.schemas import ErrorResponse, ValidationError
-
-# ✅ FIX: Explicitly import models so Base.metadata populates before create_all_tables()
-import app.models  # noqa: F401
 
 # Configure logging
 logging.basicConfig(
@@ -28,8 +24,6 @@ async def lifespan(app: FastAPI):
     """Lifespan context manager for startup/shutdown events."""
     # Startup
     logger.info("Starting FlyRank Metering & Billing Engine")
-    create_all_tables()
-    logger.info("Database tables initialized")
     yield
     # Shutdown
     logger.info("Shutting down FlyRank Metering & Billing Engine")
@@ -61,6 +55,7 @@ app.add_middleware(
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle validation errors."""
+    logger.warning("Request validation failed for %s %s: %s", request.method, request.url.path, exc.errors())
     return JSONResponse(
         status_code=422,
         content={
@@ -129,6 +124,7 @@ async def root():
 # Include Routers
 from app.routes import (  # noqa: E402
     alerts,
+    auth,
     invoices,
     overages,
     plan_changes,
@@ -141,6 +137,7 @@ from app.routes import (  # noqa: E402
 
 for r in [
     alerts.router,
+    auth.router,
     invoices.router,
     overages.router,
     plan_changes.router,
