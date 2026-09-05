@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { AlertCircle } from 'lucide-react'
 
+const DEMO_EMAIL = 'tenant1@example.com'
+const DEMO_PASSWORD = 'password123'
+
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -27,6 +30,12 @@ export default function Login() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const fillDemoCredentials = () => {
+    setEmail(DEMO_EMAIL)
+    setPassword(DEMO_PASSWORD)
+    setError('')
   }
 
   return (
@@ -90,14 +99,20 @@ export default function Login() {
         {/* Demo Credentials */}
         <div className="mt-6 pt-6 border-t">
           <p className="text-xs text-gray-600 mb-3">Demo Credentials:</p>
-          <div className="bg-gray-50 p-3 rounded text-xs space-y-1">
-            <p>
+          <button
+            type="button"
+            onClick={fillDemoCredentials}
+            disabled={isLoading}
+            className="w-full bg-gray-50 hover:bg-gray-100 disabled:opacity-60 p-3 rounded text-xs space-y-1 text-left transition"
+            aria-label="Use demo credentials"
+          >
+            <span className="block">
               <span className="font-semibold">Email:</span> tenant1@example.com
-            </p>
-            <p>
+            </span>
+            <span className="block">
               <span className="font-semibold">Password:</span> password123
-            </p>
-          </div>
+            </span>
+          </button>
         </div>
       </div>
     </div>
