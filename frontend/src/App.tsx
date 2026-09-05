@@ -9,6 +9,7 @@ import Plans from './pages/Plans'
 import Checkout from './pages/Checkout'
 import UpgradeSuccess from './pages/UpgradeSuccess'
 import Settings from './pages/Settings'
+import DocsPage from './pages/DocsPage'
 import './App.css'
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/upgrade-success" element={<UpgradeSuccess />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/docs" element={<DocsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>
