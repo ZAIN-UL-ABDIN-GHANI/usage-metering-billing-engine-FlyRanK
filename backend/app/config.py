@@ -1,6 +1,7 @@
 """Application configuration management."""
 
 from typing import List
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,7 +10,10 @@ class Settings(BaseSettings):
 
     # Application
     app_name: str = "FlyRank Metering & Billing Engine"
-    app_env: str = "development"
+    app_env: str = Field(
+        default="development",
+        validation_alias=AliasChoices("ENVIRONMENT", "APP_ENV"),
+    )
     debug: bool = True
     workers: int = 4
 
